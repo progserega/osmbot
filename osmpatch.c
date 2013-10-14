@@ -187,6 +187,8 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 		// process <find>
 		xmlNode * find_node = NULL;
 		xmlNode * cur_tag = NULL;
+		xmlNode * type = NULL;
+		bool case_sensituve=TRUE;
 
 		find_node=find_tag(rules,"find");
 		if(find_node)
@@ -194,6 +196,7 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 #ifdef DEBUG
 			fprintf(stderr,"%s:%i: Found find!\n",__FILE__,__LINE__);
 #endif
+			type=find_tag(find_node->children,"type");
 			cur_tag=find_node->children;
 			while(cur_tag=find_tag(cur_tag,"tag"))
 			{

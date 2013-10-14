@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Командный файл для обработки osm-файла с помощью утилиты osmpatch -->
+<osmpatch>
+<patchset>
+	<!-- Ищем элемент с тегами:-->
+	<find>
+		<type node='yes' ways='yes'/>
+		<tag>
+			<key full_match='yes'>power</key>
+			<value full_match='yes'>station</value>
+		</tag>
+		<tag>
+			<key full_match='yes'>name</key>
+			<value full_match='no'>ПС</value>
+		</tag>
+	</find>
+
+	<!-- Если такой элемент найден, то обрабатываем его:-->
+
+	<add>
+		<!-- Добавляем теги к элементу (заменя при наличии) -->
+		<tag k='power_usage_percent' v='95' />
+    	<tag k='power_usage_date' v='2013.10.07' />
+	</add>
+
+	<del>
+		<!-- Удаляем теги и их значения. Значения тегов в данном случае не нужны - в любом случае тег удаляется. -->
+		<tag k='test_tag_for_delete' />
+	</del>
+
+	<replace>
+		<!-- Заменяем значение тега, если такой тег существует -->
+		<tag k='replace_tag_test' v='95' />
+	</replace>
+</patchset>
+
+<!-- Правил <patchset> может быть много -->
+
+<patchset>
+	<!-- Ищем элемент с тегами:-->
+	<find>
+		<type node='yes' ways='yes'/>
+		<tag>
+			<key full_match='yes'>power</key>
+			<value full_match='yes'>sub_station</value>
+		</tag>
+		<tag>
+			<key full_match='yes'>ref</key>
+			<value full_match='no' case_sensitive='no'>КТП</value>
+		</tag>
+	</find>
+
+	<!-- Если такой элемент найден, то обрабатываем его:-->
+
+	<add>
+		<!-- Добавляем теги к элементу (заменя при наличии) -->
+		<tag k='power_usage_percent' v='95' />
+    	<tag k='power_usage_date' v='2013.10.07' />
+	</add>
+
+	<del>
+		<!-- Удаляем теги и их значения. Значения тегов в данном случае не нужны - в любом случае тег удаляется. -->
+		<tag k='test_tag_for_delete' />
+	</del>
+
+	<replace>
+		<!-- Заменяем значение тега, если такой тег существует -->
+		<tag k='replace_tag_test' v='95' />
+	</replace>
+</patchset>
+
+</osmpatch>

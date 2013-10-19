@@ -3,25 +3,22 @@
 #include <libxml/tree.h>
 #include <string.h>
 
-#ifndef false
-#define false 0
+#ifndef FALSE
+#define FALSE 0
 #endif
-#ifndef true
-#define true 1
+#ifndef TRUE
+#define TRUE 1
 #endif
-
-enum{
-	GEO_NOTDEFINED,
-	GEO_POINT,
-	GEO_POLY,
-	GEO_LINE
-};
-//#define POI 0
-//#define POLY 1
 
 #ifndef bool
 #define bool int
 #endif
+
+enum{
+	TYPE_NODE = 1,
+	TYPE_WAYS = 2
+};
+#define POI_TYPE int
 
 struct pointList
 {
@@ -32,9 +29,8 @@ struct pointList
 	struct pointList *next;
 };
 
-static void process_rules(xmlNode * a_node, xmlNode * rules);  
+int process_rules(xmlNode * a_node, xmlNode * rules);  
 int patch_by_rules(xmlNode * a_node,xmlNode * rules);
-xmlNode* find_tag(xmlNode * node, char *tag_name);
 
 xmlNode* find_tag(xmlNode * node, char *tag_name)
 {
@@ -56,6 +52,34 @@ xmlNode* find_tag(xmlNode * node, char *tag_name)
 		}
 	}
 	return NULL;
+}
+
+int wc_cmp(wchar_t *s1, wchar_t *s2)
+{
+	int not_equal=1;
+	int s1_index=0, s2_index=0;
+	for(s1_index=0;s1_index<wcslen(s1);s1_index++)
+	{
+		if(*(s1+s1_index)==*s2)
+		{
+			not_equal=0;
+			for(s2_index=0;s2_index<wcslen(s2);s2_index++)
+			{
+				if(s1_index+s2_index>wcslen(s1))
+				{
+					return 0;
+				}
+				if(*(s1+s1_index+s2_index)!=*(s2+s2_index))
+				{
+					not_equal=1;
+					break;
+				}
+			}
+			if(!not_equal)
+			break;
+		}
+	}
+	return not_equal;
 }
 
 static void parsing_Polygon(xmlNode * a_node);
@@ -121,7 +145,11 @@ main(int argv,char**argc)
 				}
 		}  
 		// process each element from osm, test it by tags from rules:
-		process_rules(osm_root_element,rules_root_element);  
+		if(!process_rules(osm_root_element,rules_root_element))
+			xmlSaveFileEnc("out.osm", osm, "UTF-8");
+		else
+			fprintf(stderr,"%s:%i: error: process rules! Dont write out xml\n", __FILE__,__LINE__);  
+
 
 /*
 /////////////////////////////////
@@ -135,7 +163,6 @@ main(int argv,char**argc)
 		//xmlDocSetRootElement(osm, osm_root_element);
 /////////////////////////////////
 		*/
-		xmlSaveFileEnc("out.osm", osm, "UTF-8");
 
 exit:
 		if(rules)xmlFreeDoc(rules);
@@ -153,12 +180,18 @@ exit:
 
 /* Recursive function that prints the XML structure */  
 
-static void  
-process_rules(xmlNode * osm, xmlNode * rules)  
+int process_rules(xmlNode * osm, xmlNode * rules)  
 {  
 		xmlNode *cur_osmpatch = NULL;  
 		xmlNode *cur_patchset = NULL;  
+		xmlNode *first_osm = NULL;  
 
+		first_osm=find_tag(osm,"osm");
+		if(!first_osm)
+		{
+			fprintf(stderr,"%s:%i: Can not found <osm> tag in osm-file! Exit!\n",__FILE__,__LINE__);
+			return -1;
+		}
 		cur_osmpatch=find_tag(rules,"osmpatch");
 		if(cur_osmpatch)
 		{
@@ -172,7 +205,8 @@ process_rules(xmlNode * osm, xmlNode * rules)
 				fprintf(stderr,"%s:%i: Found patchset!\n",__FILE__,__LINE__);
 #endif
 				// process all patchsets in rules.xml:
-				patch_by_rules(osm, cur_patchset->children);
+				if(patch_by_rules(first_osm, cur_patchset->children))
+					return -1;
 				cur_patchset=cur_patchset->next;
 			}
 		}
@@ -186,9 +220,15 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 {
 		// process <find>
 		xmlNode * find_node = NULL;
-		xmlNode * cur_tag = NULL;
+		xmlNode * cur_rules_tag = NULL;
 		xmlNode * type = NULL;
-		bool case_sensituve=TRUE;
+		xmlNode * properties = NULL;
+		int types_to_find=TYPE_NODE|TYPE_WAYS;
+		bool find_osm_element_to_process=NULL;
+		xmlNode * cur_osm_element = NULL;
+		xmlNode * cur_osm_tag = NULL;
+
+
 
 		find_node=find_tag(rules,"find");
 		if(find_node)
@@ -196,22 +236,100 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 #ifdef DEBUG
 			fprintf(stderr,"%s:%i: Found find!\n",__FILE__,__LINE__);
 #endif
+			// find type elements to search:
 			type=find_tag(find_node->children,"type");
-			cur_tag=find_node->children;
-			while(cur_tag=find_tag(cur_tag,"tag"))
+			if(type)
 			{
+				properties=type->properties;
+				while(properties)
+				{
+					// set types:
+					if(properties)
+					{
+						if(strcmp(properties->name,"nodes")==0)
+						{
+							if(strcmp(properties->children->content,"yes")==0)
+							{
+								types_to_find|=TYPE_NODE;
+							}
+							else
+								types_to_find^=TYPE_NODE;
+						}
+						if(strcmp(properties->name,"ways")==0)
+						{
+							if(strcmp(properties->children->content,"yes")==0)
+							{
+								types_to_find|=TYPE_WAYS;
+							}
+							else
+								types_to_find^=TYPE_WAYS;
+						}
+					}
+					properties=properties->next;
+				}
+				if(!types_to_find)
+				{
+					fprintf(stderr,"%s:%i: No type of osm element is selected for search! Exit!\n",__FILE__,__LINE__);
+					return -1;
+				}
 #ifdef DEBUG
-				fprintf(stderr,"%s:%i: Found tag!\n",__FILE__,__LINE__);
+				fprintf(stderr,"%s:%i: Found type! Type=%i\n",__FILE__,__LINE__,types_to_find);
 #endif
-				cur_tag=cur_tag->next;
 			}
 		}
 		else
 		{
 			fprintf(stderr,"%s:%i: Can not find tag <find>!\n",__FILE__,__LINE__);
+			return -1;
 		}
 
+		// Process each element in osm-xml (nodes, ways ...)
+		cur_osm_element=osm->children;
+		while(cur_osm_element)
+		{
+			if(types_to_find&TYPE_NODE)
+			{
+				if(strcmp(cur_osm_element->name,"node")==0)
+					find_osm_element_to_process=1;
+			}
+			else if(types_to_find&TYPE_WAYS)
+			{
+				if(strcmp(cur_osm_element->name,"way")==0)
+					find_osm_element_to_process=1;
+			}
+			else
+			{
+				fprintf(stderr,"%s:%i: No type of osm element is selected for search! Exit!\n",__FILE__,__LINE__);
+				return -1;
+			}
+			if(!find_osm_element_to_process)
+			{
+				cur_osm_element=cur_osm_element->next;
+				continue;
+			}
+			
+			cur_osm_tag=cur_osm_element->children;
+			while(cur_osm_tag)
+			{
+				if(cur_osm_tag->properties)
+				{
+					// cmp current osm-element with each find-rules:
+					while(cur_rules_tag=find_tag(cur_rules_tag,"tag"))
+					{
+		#ifdef DEBUG
+						fprintf(stderr,"%s:%i: Found tag!\n",__FILE__,__LINE__);
+		#endif
+						// process current rules tag:
 
+						cur_rules_tag=cur_rules_tag->next;
+					}
+					///////////////////
+				}
+				cur_osm_tag=cur_osm_tag->next;
+			}
+
+			cur_osm_tag=cur_osm_tag->next;
+		}
 
 /*
 
@@ -258,7 +376,7 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 					if(!posList_cur->link)
 					{
 							fprintf(stdout,"\
-  <node id='%i' action='modify' visible='true' lat='%Lf' lon='%Lf' />\n",posList_cur->id,posList_cur->lat,posList_cur->lon);
+  <node id='%i' action='modify' visible='TRUE' lat='%Lf' lon='%Lf' />\n",posList_cur->id,posList_cur->lat,posList_cur->lon);
 					}
 		#ifdef DEBUG
 					else
@@ -268,7 +386,7 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				}
 				// 2. show head way:
 				fprintf(stdout,"\
-		  <way id='%i' action='modify' visible='true'>\n",cur_global_id);
+		  <way id='%i' action='modify' visible='TRUE'>\n",cur_global_id);
 				// 3. show links to nodes in current way:
 				posList_cur=posList;
 				while(posList_cur)
@@ -311,7 +429,7 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				//1. show points 
 				posList_cur=posList;
 				fprintf(stdout,"\
-  <node id='%i' action='modify' visible='true' lat='%Lf' lon='%Lf' >\n",posList_cur->id,posList_cur->lat,posList_cur->lon);
+  <node id='%i' action='modify' visible='TRUE' lat='%Lf' lon='%Lf' >\n",posList_cur->id,posList_cur->lat,posList_cur->lon);
 					
 				// 2. show tags:
 				// TODO: add dinamical translate tags
@@ -350,8 +468,8 @@ static void parsing_Polygon(xmlNode * a_node)
 	xmlChar lat[255];
 	xmlChar lon[255];
 	xmlChar* cur_coord=NULL;
-	int lat_success=false;
-	int lon_success=false;
+	int lat_success=FALSE;
+	int lon_success=FALSE;
 	int index=0;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) 
@@ -379,8 +497,8 @@ int parsing_posList(xmlChar * text)
 	xmlChar lat[255];
 	xmlChar lon[255];
 	xmlChar* cur_coord=NULL;
-	int lat_success=false;
-	int lon_success=false;
+	int lat_success=FALSE;
+	int lon_success=FALSE;
 	int index=0;
 	if(*posList_last)
 	{
@@ -396,7 +514,7 @@ int parsing_posList(xmlChar * text)
 			// переключатель на другую координату:
 			if(!lon_success)
 			{
-				lon_success=true;
+				lon_success=TRUE;
 				*cur_coord=0;
 				cur_coord=lat;
 				index=0;
@@ -404,7 +522,7 @@ int parsing_posList(xmlChar * text)
 			}
 			else
 			{
-				lat_success=true;
+				lat_success=TRUE;
 				*cur_coord=0;
 				index=0;
 			}
@@ -425,8 +543,8 @@ int parsing_posList(xmlChar * text)
 			// устанавливаем переменные для выбора второй пары:
 			index=0;
 			cur_coord=lon;
-			lat_success=false;
-			lon_success=false;
+			lat_success=FALSE;
+			lon_success=FALSE;
 			//cur_text--;
 
 			// Формируем связный список из полученных точек:
@@ -451,7 +569,7 @@ int parsing_posList(xmlChar * text)
 				if( (*posList_last)->lat==posList_cur->lat & (*posList_last)->lon==posList_cur->lon & *posList_last !=posList_cur  )
 				{	
 					(*posList_last)->id=posList_cur->id;
-					(*posList_last)->link=true;
+					(*posList_last)->link=TRUE;
 					// отменяем уменьшение идентификатора на копию точки:
 					cur_global_id++;
 #ifdef DEBUG

@@ -4,7 +4,7 @@
 <patchset>
 	<!-- Ищем элемент с тегами:-->
 	<find>
-		<type node='yes' ways='yes'/>
+		<type nodes='yes' ways='yes'/>
 		<tag>
 			<key full_match='yes'>power</key>
 			<value full_match='yes'>station</value>
@@ -39,7 +39,7 @@
 <patchset>
 	<!-- Ищем элемент с тегами:-->
 	<find>
-		<type node='yes' ways='yes'/>
+		<type nodes='yes' ways='yes'/>
 		<tag>
 			<key full_match='yes'>power</key>
 			<value full_match='yes'>sub_station</value>

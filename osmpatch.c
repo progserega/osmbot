@@ -14,6 +14,9 @@
 #define bool int
 #endif
 
+#define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE false
+#define SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE true
+
 enum{
 	TYPE_NODE = 1,
 	TYPE_WAYS = 2
@@ -223,10 +226,16 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 		xmlNode * cur_rules_tag = NULL;
 		xmlNode * type = NULL;
 		xmlNode * properties = NULL;
-		int types_to_find=TYPE_NODE|TYPE_WAYS;
-		bool find_osm_element_to_process=NULL;
 		xmlNode * cur_osm_element = NULL;
 		xmlNode * cur_osm_tag = NULL;
+		xmlNode * cur_node = NULL;
+		xmlNode * cur_prop = NULL;
+		int types_to_find=TYPE_NODE|TYPE_WAYS;
+		bool find_osm_element_to_process=NULL;
+		int tags_rules_equal=NULL;
+		/// default search options for keys and values:
+		bool case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+		bool full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 
 
 
@@ -307,23 +316,59 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				cur_osm_element=cur_osm_element->next;
 				continue;
 			}
-			
+
+			tags_rules_equal=0;
 			cur_osm_tag=cur_osm_element->children;
 			while(cur_osm_tag)
 			{
-				if(cur_osm_tag->properties)
+				tags_rules_equal++;
+				properties=cur_osm_tag->properties;
+				if(properties)
 				{
+					cur_rules_tag=find_node->children;
 					// cmp current osm-element with each find-rules:
 					while(cur_rules_tag=find_tag(cur_rules_tag,"tag"))
 					{
 		#ifdef DEBUG
 						fprintf(stderr,"%s:%i: Found tag!\n",__FILE__,__LINE__);
 		#endif
+						
 						// process current rules tag:
+						cur_node=find_tag(cur_rules_tag->children,"key");
+						//get search options for this key:
+						case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+						full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
+						cur_prop=cur_node->properties;
+						while(cur_prop)
+						{
+							if(strcmp(cur_prop->name,"case_sensitive")==0)
+							{
+								if(strcmp(cur_prop->value,"yes")==0)
+									case_sensitive=true;
+								else
+									case_sensitive=false;
+							}
+							if(strcmp(cur_prop->name,"full_match")==0)
+							{
+								if(strcmp(cur_prop->value,"yes")==0)
+									full_match=true;
+								else
+									full_match=false;
+							}
+							cur_prop=cur_prop->next;
+						}
+						
+
+
+
+						cur_node=find_tag(cur_rules_tag->children,"value");
+	
+
 
 						cur_rules_tag=cur_rules_tag->next;
 					}
 					///////////////////
+
 				}
 				cur_osm_tag=cur_osm_tag->next;
 			}

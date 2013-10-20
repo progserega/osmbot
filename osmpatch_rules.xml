@@ -46,7 +46,7 @@
 		</tag>
 		<tag>
 			<key full_match='yes'>ref</key>
-			<value full_match='no' case_sensitive='no'>КТП</value>
+			<value full_match='no' no_case_sensitive='no'>КТП</value>
 		</tag>
 	</find>
 

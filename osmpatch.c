@@ -279,7 +279,9 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 		xmlChar * osm_str = NULL;
 		int types_to_find=TYPE_NODE|TYPE_WAYS;
 		bool find_osm_element_to_process=FALSE;
+		bool skip_osm_element=FALSE;
 		int tags_rules_equal=0;
+		int tags_rules_num=0;
 		/// default search options for keys and values:
 		bool no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
 		bool full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
@@ -338,6 +340,17 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 			fprintf(stderr,"%s:%i: Can not find tag <find>!\n",__FILE__,__LINE__);
 			return -1;
 		}
+		// set tags_rules_num
+		cur_rules_tag=find_node->children;
+		// cmp current osm-element with each find-rules:
+		while(cur_rules_tag=find_tag(cur_rules_tag,"tag"))
+		{
+			tags_rules_num++;
+			cur_rules_tag=cur_rules_tag->next;
+		}
+#ifdef DEBUG
+		fprintf(stderr,"%s:%i: In current patchset %i rules.\n",__FILE__,__LINE__,tags_rules_num);
+#endif
 
 		// Process each element in osm-xml (nodes, ways ...)
 		cur_osm_element=osm->children;
@@ -364,11 +377,12 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				continue;
 			}
 
+			// flag to test success all find rules:
 			tags_rules_equal=0;
+			skip_osm_element=FALSE;
 			cur_osm_tag=cur_osm_element->children;
 			while(cur_osm_tag)
 			{
-				tags_rules_equal++;
 				properties=cur_osm_tag->properties;
 				if(properties)
 				{
@@ -455,20 +469,120 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 							}
 						}
 
-
-
-
+						// now - key is valid, test value:
 						// process value
-	
+						
+						// process current rules tag:
+						cur_node=find_tag(cur_rules_tag->children,"value");
 
+						// process key:
+						//get search options for this key:
+						no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+						full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
+						cur_prop=cur_node->properties;
+						while(cur_prop)
+						{
+							if(strcmp(cur_prop->name,"no_case_sensitive")==0)
+							{
+								if(strcmp(cur_prop->children->content,"yes")==0)
+									no_case_sensitive=TRUE;
+								else
+									no_case_sensitive=FALSE;
+							}
+							if(strcmp(cur_prop->name,"full_match")==0)
+							{
+								if(strcmp(cur_prop->children->content,"yes")==0)
+									full_match=TRUE;
+								else
+									full_match=FALSE;
+							}
+							cur_prop=cur_prop->next;
+						}
+						
+						cur_prop=properties;
+						while(cur_prop)
+						{
+							if(!strcmp(cur_prop->name,"v"))
+							{
+								// cmp current osm tag key with current rules key:
+								if(cur_prop->children)
+								{
+									osm_str=cur_prop->children->content;
+									break;
+								}
+								else
+								{
+									fprintf(stderr,"%s:%i: error processing XML! 'v' attr have no content!",__FILE__,__LINE__);
+									return -1;
+								}
+							}
+							cur_prop=cur_prop->next;
+						}
 
+						if(cur_node->children)
+						{
+							rules_str=cur_node->children->content;
+						}
+						else
+						{
+							fprintf(stderr,"%s:%i: error processing XML! 'value' tag have no content!",__FILE__,__LINE__);
+							return -1;
+						}
+						if(rules_str!=NULL && osm_str!=NULL)
+						{
+							if(str_cmp_ext(osm_str,rules_str,no_case_sensitive,full_match)==0)
+							{
+								// find tag!
+#ifdef DEBUG
+								fprintf(stderr,"Find value '%s' in '%s'\n", rules_str, osm_str);  
+#endif
+								tags_rules_equal++;
+							}
+							else
+							{
+#ifdef DEBUG
+								fprintf(stderr,"Not find value '%s' in '%s' - skip this osm element!\n", rules_str, osm_str);  
+#endif
+								skip_osm_element=TRUE;
+								break;
+							}
+						}
 						cur_rules_tag=cur_rules_tag->next;
 					}
 					///////////////////
 
 				}
+				if(skip_osm_element)break;
 				cur_osm_tag=cur_osm_tag->next;
 			}
+			/// TODO check - all find rules is finded in current osm_element or not all:
+			if(tags_rules_equal==tags_rules_num)
+			{
+				// Full equal osm element!
+						
+				cur_prop=cur_osm_element->properties;
+				while(cur_prop)
+				{
+					if(!strcmp(cur_prop->name,"id"))
+					{
+						// cmp current osm tag key with current rules key:
+						if(cur_prop->children)
+						{
+							osm_str=cur_prop->children->content;
+							break;
+						}
+						else
+						{
+							fprintf(stderr,"%s:%i: error processing XML! 'id' attr have no content!",__FILE__,__LINE__);
+							return -1;
+						}
+					}
+					cur_prop=cur_prop->next;
+				}
+				fprintf(stdout,"\nFull equal OSM-element!\nElement id=%s\nStart patch this element!",osm_str);  
+
+			}
+
 			cur_osm_element=cur_osm_element->next;
 		}
 		return 0;

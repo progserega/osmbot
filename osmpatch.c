@@ -17,6 +17,7 @@
 
 #define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE FALSE
 #define SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE TRUE
+#define SEARCH_OPTIONS_SKIP_ELEMNT_DEFAULT_VALUE FALSE
 
 enum{
 	TYPE_NODE = 1,
@@ -283,8 +284,9 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 		int tags_rules_equal=0;
 		int tags_rules_num=0;
 		/// default search options for keys and values:
-		bool no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
-		bool full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
+		bool search_options_skip_element=SEARCH_OPTIONS_SKIP_ELEMNT_DEFAULT_VALUE;
+		bool search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+		bool search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 
 
 
@@ -386,37 +388,48 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				properties=cur_osm_tag->properties;
 				if(properties)
 				{
+					search_options_skip_element=SEARCH_OPTIONS_SKIP_ELEMNT_DEFAULT_VALUE;
 					cur_rules_tag=find_node->children;
 					// cmp current osm-element with each find-rules:
 					while(cur_rules_tag=find_tag(cur_rules_tag,"tag"))
 					{
-#ifdef DEBUG
-						fprintf(stderr,"%s:%i: Found tag!\n",__FILE__,__LINE__);
-#endif
-						
 						// process current rules tag:
-						cur_node=find_tag(cur_rules_tag->children,"key");
+						// get search options for this rules tag:
+						cur_prop=cur_rules_tag->properties;
+						while(cur_prop)
+						{
+							if(strcmp(cur_prop->name,"skip")==0)
+							{
+								if(strcmp(cur_prop->children->content,"yes")==0)
+									search_options_skip_element=TRUE;
+								else
+									search_options_skip_element=FALSE;
+							}
+							cur_prop=cur_prop->next;
+						}
+					
 
 						// process key:
+						cur_node=find_tag(cur_rules_tag->children,"key");
 						//get search options for this key:
-						no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
-						full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
+						search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+						search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 						cur_prop=cur_node->properties;
 						while(cur_prop)
 						{
 							if(strcmp(cur_prop->name,"no_case_sensitive")==0)
 							{
 								if(strcmp(cur_prop->children->content,"yes")==0)
-									no_case_sensitive=TRUE;
+									search_options_no_case_sensitive=TRUE;
 								else
-									no_case_sensitive=FALSE;
+									search_options_no_case_sensitive=FALSE;
 							}
 							if(strcmp(cur_prop->name,"full_match")==0)
 							{
 								if(strcmp(cur_prop->children->content,"yes")==0)
-									full_match=TRUE;
+									search_options_full_match=TRUE;
 								else
-									full_match=FALSE;
+									search_options_full_match=FALSE;
 							}
 							cur_prop=cur_prop->next;
 						}
@@ -452,17 +465,17 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 						}
 						if(rules_str!=NULL && osm_str!=NULL)
 						{
-							if(str_cmp_ext(osm_str,rules_str,no_case_sensitive,full_match)==0)
+							if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
 							{
 								// find tag!
 #ifdef DEBUG
-								fprintf(stderr,"find tag!: Find '%s' in '%s' - now will be test value of tag...\n", rules_str, osm_str);  
+								fprintf(stderr,"%s:%i: Find '%s' in '%s' - now will be test value of tag...\n",__FILE__,__LINE__, rules_str, osm_str);  
 #endif
 							}
 							else
 							{
 #ifdef DEBUG
-								fprintf(stderr,"Not find tag!: Not find '%s' in '%s' - skip this tag\n", rules_str, osm_str);  
+								fprintf(stderr,"%s:%i: Not find '%s' in '%s' - skip this tag\n",__FILE__,__LINE__, rules_str, osm_str);  
 #endif
 								cur_rules_tag=cur_rules_tag->next;
 								continue;
@@ -471,30 +484,55 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 
 						// now - key is valid, test value:
 						// process value
-						
-						// process current rules tag:
 						cur_node=find_tag(cur_rules_tag->children,"value");
-
-						// process key:
-						//get search options for this key:
-						no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
-						full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
+						if(cur_node==NULL)
+						{
+							// in rules tag is only <key>, not <value>. 
+							// This mean that all tags osm with 'k'==<key> in rules - is 'success find'	
+							// find tag!
+#ifdef DEBUG
+							fprintf(stderr,"%s:%i: No <value> tag - then all value is selected as success by this rule.\n",__FILE__,__LINE__);  
+#endif
+							if(search_options_skip_element)
+							{
+								// skip this OSM element, by 'skip=yes' in rules tag:
+#ifdef DEBUG
+								fprintf(stderr,"%s:%i: Skip element, becouse found rules tag with 'skip=yes' attr. Value last tag in OSM='%s'\n",__FILE__,__LINE__, osm_str);  
+#endif
+								skip_osm_element=TRUE;
+								break;
+							}
+							else
+							{
+								tags_rules_equal++;
+#ifdef DEBUG
+								fprintf(stderr,"%s:%i: Succes 'find rules' #%i\n",__FILE__,__LINE__, tags_rules_equal);  
+#endif
+								cur_rules_tag=cur_rules_tag->next;
+								continue;
+							}
+	
+						}
+						
+						//get search options for this value:
+						search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+						search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 						cur_prop=cur_node->properties;
 						while(cur_prop)
 						{
 							if(strcmp(cur_prop->name,"no_case_sensitive")==0)
 							{
 								if(strcmp(cur_prop->children->content,"yes")==0)
-									no_case_sensitive=TRUE;
+									search_options_no_case_sensitive=TRUE;
 								else
-									no_case_sensitive=FALSE;
+									search_options_no_case_sensitive=FALSE;
 							}
 							if(strcmp(cur_prop->name,"full_match")==0)
 							{
 								if(strcmp(cur_prop->children->content,"yes")==0)
-									full_match=TRUE;
+									search_options_full_match=TRUE;
 								else
-									full_match=FALSE;
+									search_options_full_match=FALSE;
 							}
 							cur_prop=cur_prop->next;
 						}
@@ -530,21 +568,48 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 						}
 						if(rules_str!=NULL && osm_str!=NULL)
 						{
-							if(str_cmp_ext(osm_str,rules_str,no_case_sensitive,full_match)==0)
+							if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
 							{
 								// find tag!
 #ifdef DEBUG
-								fprintf(stderr,"Find value '%s' in '%s'\n", rules_str, osm_str);  
+								fprintf(stderr,"%s:%i: Find value '%s' in '%s'\n",__FILE__,__LINE__, rules_str, osm_str);  
 #endif
-								tags_rules_equal++;
+								if(search_options_skip_element)
+								{
+									// skip this OSM element, by 'skip=yes' in rules tag:
+#ifdef DEBUG
+									fprintf(stderr,"%s:%i: Skip element, becouse found rules tag with 'skip=yes' attr. Value last tag in OSM='%s'\n",__FILE__,__LINE__, osm_str);  
+#endif
+									skip_osm_element=TRUE;
+									break;
+								}
+								else
+								{
+									tags_rules_equal++;
+#ifdef DEBUG
+									fprintf(stderr,"%s:%i: Succes 'find rules' #%i\n",__FILE__,__LINE__, tags_rules_equal);  
+#endif	
+								}
 							}
 							else
 							{
+				
+								if(!search_options_skip_element)
+								{
+									// skip this OSM element, by 'skip=yes' in rules tag:
 #ifdef DEBUG
-								fprintf(stderr,"Not find value '%s' in '%s' - skip this osm element!\n", rules_str, osm_str);  
+									fprintf(stderr,"%s:%i: Not find value '%s' in '%s' - skip this osm element!\n",__FILE__,__LINE__, rules_str, osm_str);  
+	#endif
+									skip_osm_element=TRUE;
+									break;
+								}
+								else
+								{
+									tags_rules_equal++;
+#ifdef DEBUG
+									fprintf(stderr,"%s:%i: Succes 'find rules' #%i (with skip=yes options in rules tag). Realy this value is not finded and it is good.\n",__FILE__,__LINE__, tags_rules_equal);  
 #endif
-								skip_osm_element=TRUE;
-								break;
+								}
 							}
 						}
 						cur_rules_tag=cur_rules_tag->next;

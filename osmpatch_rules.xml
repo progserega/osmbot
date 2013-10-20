@@ -4,14 +4,28 @@
 <patchset>
 	<!-- Ищем элемент с тегами:-->
 	<find>
+		<!-- Задаём, какие типы элементов обрабатываем -->
 		<type nodes='yes' ways='yes'/>
 		<tag>
+			<!-- full_match='no' - значит условие выполнится, если в OSM-теге найдётся искомая строка, если же full_match='yes' - условие выполнится, 
+				 если строки полностью совпадут. (по умолчанию - yes)
+				 no_case_sensitive='yes' - поиск производится без учёта регистра символов в строках (по умолчанию - no)
+				 -->
 			<key full_match='yes'>power</key>
 			<value full_match='yes'>station</value>
 		</tag>
 		<tag>
 			<key full_match='yes'>name</key>
-			<value full_match='no'>ПС</value>
+			<value full_match='no' no_case_sensitive='yes'>ПС</value>
+		</tag>
+		<!-- параметр skip='yes' указывает, что OSM-элементы, имеющие данные теги и значения - будут исключаться из поиска -->
+		<tag skip='yes'>
+			<key full_match='yes'>name</key>
+			<value full_match='no'>110</value>
+		</tag>
+		<tag>
+			<key full_match='no'>source</key>
+			<!-- если тег <value> не указан, то ищутся все элементы с тегом значения <key> и любым значением <value> -->
 		</tag>
 	</find>
 
@@ -40,10 +54,6 @@
 	<!-- Ищем элемент с тегами:-->
 	<find>
 		<type nodes='yes' ways='yes'/>
-		<tag>
-			<key full_match='yes'>power</key>
-			<value full_match='yes'>sub_station</value>
-		</tag>
 		<tag>
 			<key full_match='yes'>ref</key>
 			<value full_match='no' no_case_sensitive='no'>КТП</value>

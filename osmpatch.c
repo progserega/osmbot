@@ -1,6 +1,7 @@
 #include <stdio.h>  
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <locale.h>
 #include <string.h>
 
 #ifndef FALSE
@@ -14,8 +15,8 @@
 #define bool int
 #endif
 
-#define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE false
-#define SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE true
+#define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE FALSE
+#define SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE TRUE
 
 enum{
 	TYPE_NODE = 1,
@@ -57,22 +58,56 @@ xmlNode* find_tag(xmlNode * node, char *tag_name)
 	return NULL;
 }
 
-int wc_cmp(wchar_t *s1, wchar_t *s2)
+// если no_case_sensitive=TRUE, то поиск происходит без учёта регистра,
+// если full_match=TRUE, то функция возвращает 0 только в случае полного совпадения строк
+// в противном случае функция возвращает 0 в случае, если в строке where_search полностью
+// присутствует строка what_search
+// в случае, если ничего не найдено - возвращается 1
+// в случае, если произошла ошибка - возвращается -1
+int str_cmp_ext(char *where_search, char *what_search, bool no_case_sensitive, bool full_match)
+{
+	int return_value=-1;
+	wchar_t *where_search_wchar=NULL;
+	wchar_t *what_search_wchar=NULL;
+	where_search_wchar=(wchar_t*)malloc( (strlen(where_search)+1) * sizeof(wchar_t));
+	what_search_wchar=(wchar_t*)malloc( (strlen(what_search)+1) * sizeof(wchar_t));
+	if(where_search_wchar!=NULL && what_search_wchar!=NULL)
+	{
+		if(mbstowcs(where_search_wchar,where_search,strlen(where_search))!=-1 &&
+		   mbstowcs(what_search_wchar,what_search,strlen(what_search))!=-1)
+		   {
+				return_value=wc_cmp_ext(where_search_wchar,what_search_wchar,no_case_sensitive,full_match);
+		   }
+		   else
+				return_value=-1;
+	}
+	else return_value=-1;
+	if(where_search_wchar)free(where_search_wchar);
+	if(what_search_wchar)free(what_search_wchar);
+	return return_value;
+}
+
+// search what_search in where_search (wchar_t)
+int wc_cmp_ext(wchar_t *where_search, wchar_t *what_search, bool no_case_sensitive, bool full_match)
 {
 	int not_equal=1;
-	int s1_index=0, s2_index=0;
-	for(s1_index=0;s1_index<wcslen(s1);s1_index++)
+	int where_search_index=0, what_search_index=0;
+	for(where_search_index=0;where_search_index<wcslen(where_search);where_search_index++)
 	{
-		if(*(s1+s1_index)==*s2)
+		if(*(where_search+where_search_index)==*what_search ||
+			no_case_sensitive && ( towupper(*(where_search+where_search_index))==towupper(*what_search) )
+			)
 		{
 			not_equal=0;
-			for(s2_index=0;s2_index<wcslen(s2);s2_index++)
+			for(what_search_index=0;what_search_index<wcslen(what_search);what_search_index++)
 			{
-				if(s1_index+s2_index>wcslen(s1))
+				if(where_search_index+what_search_index>wcslen(where_search))
 				{
 					return 0;
 				}
-				if(*(s1+s1_index+s2_index)!=*(s2+s2_index))
+				if( (*(where_search+where_search_index+what_search_index)!=*(what_search+what_search_index) && !no_case_sensitive) ||
+					no_case_sensitive && ( towupper(*(where_search+where_search_index+what_search_index) )!= towupper(*(what_search+what_search_index)) ) 
+				)
 				{
 					not_equal=1;
 					break;
@@ -80,6 +115,11 @@ int wc_cmp(wchar_t *s1, wchar_t *s2)
 			}
 			if(!not_equal)
 			break;
+		}
+		else
+		{
+			if(full_match)
+				return 1;
 		}
 	}
 	return not_equal;
@@ -106,6 +146,11 @@ main(int argv,char**argc)
 		const char     *rules_file = "rules.xml";  
 		const char     *osm_file = "in.osm";  
 		int exit_status=0;
+
+		// for wchar_t:
+		setlocale(LC_ALL, "");
+		setlocale(LC_NUMERIC,"C");
+
 		/*if (argv<3)
 		{
 			fprintf(stderr, "need 2 parametr - osmpatch_rules.xml and input osm-file! exit!");
@@ -225,14 +270,14 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 		xmlNode * find_node = NULL;
 		xmlNode * cur_rules_tag = NULL;
 		xmlNode * type = NULL;
-		xmlNode * properties = NULL;
+		xmlAttr * properties = NULL;
 		xmlNode * cur_osm_element = NULL;
 		xmlNode * cur_osm_tag = NULL;
 		xmlNode * cur_node = NULL;
-		xmlNode * cur_prop = NULL;
+		xmlAttr * cur_prop = NULL;
 		int types_to_find=TYPE_NODE|TYPE_WAYS;
-		bool find_osm_element_to_process=NULL;
-		int tags_rules_equal=NULL;
+		bool find_osm_element_to_process=FALSE;
+		int tags_rules_equal=0;
 		/// default search options for keys and values:
 		bool case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
 		bool full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
@@ -329,9 +374,9 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 					// cmp current osm-element with each find-rules:
 					while(cur_rules_tag=find_tag(cur_rules_tag,"tag"))
 					{
-		#ifdef DEBUG
+#ifdef DEBUG
 						fprintf(stderr,"%s:%i: Found tag!\n",__FILE__,__LINE__);
-		#endif
+#endif
 						
 						// process current rules tag:
 						cur_node=find_tag(cur_rules_tag->children,"key");
@@ -343,21 +388,22 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 						{
 							if(strcmp(cur_prop->name,"case_sensitive")==0)
 							{
-								if(strcmp(cur_prop->value,"yes")==0)
-									case_sensitive=true;
+								if(strcmp(cur_prop->children->content,"yes")==0)
+									case_sensitive=TRUE;
 								else
-									case_sensitive=false;
+									case_sensitive=FALSE;
 							}
 							if(strcmp(cur_prop->name,"full_match")==0)
 							{
-								if(strcmp(cur_prop->value,"yes")==0)
-									full_match=true;
+								if(strcmp(cur_prop->children->content,"yes")==0)
+									full_match=TRUE;
 								else
-									full_match=false;
+									full_match=FALSE;
 							}
 							cur_prop=cur_prop->next;
 						}
-						
+						// cmp current osm tag key with current rules key:
+						//if(strcmp())
 
 
 
@@ -372,8 +418,6 @@ int patch_by_rules(xmlNode * osm, xmlNode *rules)
 				}
 				cur_osm_tag=cur_osm_tag->next;
 			}
-
-			cur_osm_tag=cur_osm_tag->next;
 		}
 
 /*

@@ -204,21 +204,11 @@ main(int argv,char**argc)
 		if(!process_patchsets(osm_root_element,rules_root_element))
 			xmlSaveFileEnc("out.osm", osm, "UTF-8");
 		else
+		{
 			fprintf(stderr,"%s:%i: error: process rules! Dont write out xml\n", __FILE__,__LINE__);  
+			exit_status=-1;
+		}
 
-
-/*
-/////////////////////////////////
-		xmlNode *cur_node = NULL;  
-		cur_node=osm->children;
-		xmlNodePtr pNode = xmlNewNode(0, (xmlChar*)"newNodeName");
-		xmlNodeSetContent(pNode, (xmlChar*)"content");
-		//xmlAddChild(pParentNode, pNode);
-		xmlAddChild(cur_node, pNode);
-		//xmlDocSetRootElement(pDoc, pParentNode);
-		//xmlDocSetRootElement(osm, osm_root_element);
-/////////////////////////////////
-		*/
 
 exit:
 		if(rules)xmlFreeDoc(rules);
@@ -455,7 +445,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 
 	// test each osm tags in current osm-element:
 	cur_osm_tag=osm_element->children;
-	while(cur_osm_tag)
+	while(cur_osm_tag=find_tag(cur_osm_tag,"tag"))
 	{
 		properties=cur_osm_tag->properties;
 		if(properties)
@@ -504,6 +494,15 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 				}
 				cur_prop=cur_prop->next;
 			}
+			if(osm_str==NULL)
+			{
+				
+#ifdef DEBUG
+				fprintf(stderr,"%s:%i: node have not 'k' value - skip this node\n",__FILE__,__LINE__, rules_str, osm_str);  
+#endif
+				cur_osm_tag=cur_osm_tag->next;
+				continue;
+			}
 
 			if(cur_node->children)
 			{
@@ -514,7 +513,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 				fprintf(stderr,"%s:%i: error processing XML! 'key' tag have no content!",__FILE__,__LINE__);
 				return RETURN_VALUE_ERROR;
 			}
-			if(rules_str!=NULL && osm_str!=NULL)
+			if(rules_str!=NULL)
 			{
 				if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
 				{
@@ -533,6 +532,11 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 					cur_osm_tag=cur_osm_tag->next;
 					continue;
 				}
+			}
+			else
+			{
+				fprintf(stderr,"%s:%i: error processing XML! 'rules_str' == NULL\n",__FILE__,__LINE__);
+				return RETURN_VALUE_ERROR;
 			}
 
 			// now - key is valid, test value:
@@ -608,6 +612,15 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 				}
 				cur_prop=cur_prop->next;
 			}
+			if(osm_str==NULL)
+			{
+				
+#ifdef DEBUG
+				fprintf(stderr,"%s:%i: node have not 'v' value - skip this node\n",__FILE__,__LINE__, rules_str, osm_str);  
+#endif
+				cur_osm_tag=cur_osm_tag->next;
+				continue;
+			}
 
 			if(cur_node->children)
 			{
@@ -618,7 +631,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 				fprintf(stderr,"%s:%i: error processing XML! 'value' tag have no content!",__FILE__,__LINE__);
 				return RETURN_VALUE_ERROR;
 			}
-			if(rules_str!=NULL && osm_str!=NULL)
+			if(rules_str!=NULL)
 			{
 				if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
 				{
@@ -665,7 +678,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 			}
 			else
 			{
-				fprintf(stderr,"%s:%i: error processing XML! 'rules_str' or 'osm_str' == NULL",__FILE__,__LINE__);
+				fprintf(stderr,"%s:%i: error processing XML! 'rules_str' == NULL\n",__FILE__,__LINE__);
 				return RETURN_VALUE_ERROR;
 			}
 		}
@@ -676,9 +689,13 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 
 int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 {
+	xmlNode * new_node = NULL;
+	xmlNode * cur_node = NULL;
+	xmlNode * cur_rule = NULL;
 	xmlAttr * cur_prop = NULL;
-	xmlChar * rules_str = NULL;
-	xmlChar * osm_str = NULL;
+	xmlChar * id_str = NULL;
+	xmlChar * key_str = NULL;
+	xmlChar * value_str = NULL;
 
 	// Full equal osm element!
 	cur_prop=osm_element->properties;
@@ -689,7 +706,7 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 			// cmp current osm tag key with current rules key:
 			if(cur_prop->children)
 			{
-				osm_str=cur_prop->children->content;
+				id_str=cur_prop->children->content;
 				break;
 			}
 			else
@@ -700,6 +717,72 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 		}
 		cur_prop=cur_prop->next;
 	}
-	fprintf(stdout,"\nFull equal OSM-element!\nElement id=%s\nStart patch this element!",osm_str);  
+	fprintf(stdout,"\nFull equal OSM-element!\nElement id=%s\nStart patch this element!",id_str);  
+
+	// process <add> rules:
+	cur_rule=find_tag(rule,"add");
+	if(cur_rule!=NULL)
+	{
+		cur_rule=cur_rule->children;
+		while(cur_rule=find_tag(cur_rule,"tag"))
+		{
+			// get key and value for current new tag:
+			cur_prop=cur_rule->properties;
+			
+			while(cur_prop)
+			{
+				if(!strcmp(cur_prop->name,"k"))
+				{
+					// cmp current osm tag key with current rules key:
+					if(cur_prop->children)
+					{
+						key_str=cur_prop->children->content;
+					}
+					else
+					{
+						fprintf(stderr,"%s:%i: error processing XML! 'k' attr have no content!",__FILE__,__LINE__);
+						return RETURN_VALUE_ERROR;
+					}
+				}
+				else if(!strcmp(cur_prop->name,"v"))
+				{
+					// cmp current osm tag key with current rules key:
+					if(cur_prop->children)
+					{
+						value_str=cur_prop->children->content;
+						break;
+					}
+					else
+					{
+						fprintf(stderr,"%s:%i: error processing XML! 'v' attr have no content!",__FILE__,__LINE__);
+						return RETURN_VALUE_ERROR;
+					}
+				}
+
+				cur_prop=cur_prop->next;
+			}
+			if(key_str==NULL||value_str==NULL)
+			{
+				fprintf(stderr,"%s:%i: error processing XML! Not find 'k' or 'v' attr in <add> rule!\n",__FILE__,__LINE__);
+				return -1;
+			}
+			// write new tag:
+			 new_node =	xmlNewChild(osm_element, NULL, BAD_CAST "tag", NULL);
+			xmlNewProp(new_node, BAD_CAST "k", key_str);
+			xmlNewProp(new_node, BAD_CAST "v", value_str);
+			
+/*
+			new_node = xmlNewNode(0, (xmlChar*)"newNodeName");
+			xmlNodeSetContent(pNode, (xmlChar*)"content");
+			//xmlAddChild(pParentNode, pNode);
+			xmlAddChild(cur_node, pNode);
+			//xmlDocSetRootElement(pDoc, pParentNode);
+			//xmlDocSetRootElement(osm, osm_root_element);
+*/
+			// next tag:
+			cur_rule=cur_rule->next;
+		}
+
+	}
 	return RETURN_VALUE_SUCCESS;
 }

@@ -890,15 +890,17 @@ int delete_tag_from_osm(xmlNode* osm_element, xmlChar* key_str)
 #ifdef DEBUG
 			fprintf(stderr,"%s:%i: Delete existing <tag k='%s' ... />\n",__FILE__,__LINE__, osm_str );  
 #endif
-			// TODO  delete element:
+			// delete element:
 			tag_to_delete=cur_osm_tag;
 			
-			// previous -> next
+	/*		// previous -> next
 			if(cur_osm_tag->prev)cur_osm_tag->prev->next=cur_osm_tag->next;
 			// next -> previous
 			if(cur_osm_tag->next)cur_osm_tag->next->prev=cur_osm_tag->prev;
-
 			xmlFreeNode(cur_osm_tag);
+*/
+			xmlUnlinkNode(tag_to_delete);
+			xmlFreeNode(tag_to_delete);
 
 			return RETURN_VALUE_SUCCESS;
 		}

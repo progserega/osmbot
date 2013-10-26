@@ -404,7 +404,7 @@ int process_rules(xmlNode * osm, xmlNode *rules)
 			// now we can patch thist element by "add,delete,replace" releses in this
 			// patchset:
 			//
-			if(patch_osm_element_by_patchset(cur_osm_element,rules))
+			if(patch_osm_element_by_patchset(cur_osm_element,rules)==RETURN_VALUE_ERROR)
 			{
 				return RETURN_VALUE_ERROR;
 			}
@@ -695,6 +695,7 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 	xmlChar * id_str = NULL;
 	xmlChar * key_str = NULL;
 	xmlChar * value_str = NULL;
+	int return_value = RETURN_VALUE_ERROR;
 
 	// Full equal osm element!
 	cur_prop=osm_element->properties;
@@ -775,6 +776,8 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 				}
 				if(add_tag_to_osm(osm_element,key_str,value_str)!=RETURN_VALUE_SUCCESS)
 					return RETURN_VALUE_ERROR;
+				else
+					return_value=RETURN_VALUE_SUCCESS;
 			}
 			// next tag:
 			cur_rule=cur_rule->next;
@@ -819,12 +822,14 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 				// if such key not found (nothing deleting) - it is not error
 				if(delete_tag_from_osm(osm_element,key_str)==RETURN_VALUE_ERROR)
 					return RETURN_VALUE_ERROR;
+				else
+					return_value=RETURN_VALUE_SUCCESS;
 			}
 			// next tag:
 			cur_rule=cur_rule->next;
 		}
 	}
-	return RETURN_VALUE_SUCCESS;
+	return return_value;
 }
 
 

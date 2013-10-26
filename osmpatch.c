@@ -689,7 +689,6 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 
 int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 {
-	xmlNode * new_node = NULL;
 	xmlNode * cur_node = NULL;
 	xmlNode * cur_rule = NULL;
 	xmlAttr * cur_prop = NULL;
@@ -764,25 +763,185 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 			if(key_str==NULL||value_str==NULL)
 			{
 				fprintf(stderr,"%s:%i: error processing XML! Not find 'k' or 'v' attr in <add> rule!\n",__FILE__,__LINE__);
-				return -1;
+				return RETURN_VALUE_ERROR;
 			}
-			// write new tag:
-			 new_node =	xmlNewChild(osm_element, NULL, BAD_CAST "tag", NULL);
-			xmlNewProp(new_node, BAD_CAST "k", key_str);
-			xmlNewProp(new_node, BAD_CAST "v", value_str);
-			
-/*
-			new_node = xmlNewNode(0, (xmlChar*)"newNodeName");
-			xmlNodeSetContent(pNode, (xmlChar*)"content");
-			//xmlAddChild(pParentNode, pNode);
-			xmlAddChild(cur_node, pNode);
-			//xmlDocSetRootElement(pDoc, pParentNode);
-			//xmlDocSetRootElement(osm, osm_root_element);
-*/
+			else
+			{
+				// before add tag - remove tag with such key, if it is exist:
+				if(delete_tag_from_osm(osm_element,key_str)==RETURN_VALUE_ERROR)
+				{
+					// error only if error delete, if not delete becouse not find - it not error
+					return RETURN_VALUE_ERROR;
+				}
+				if(add_tag_to_osm(osm_element,key_str,value_str)!=RETURN_VALUE_SUCCESS)
+					return RETURN_VALUE_ERROR;
+			}
 			// next tag:
 			cur_rule=cur_rule->next;
 		}
 
+	}
+	
+	// process <delete> rules:
+	cur_rule=find_tag(rule,"delete");
+	if(cur_rule!=NULL)
+	{
+		cur_rule=cur_rule->children;
+		while(cur_rule=find_tag(cur_rule,"tag"))
+		{
+			// get key and value for current new tag:
+			cur_prop=cur_rule->properties;
+			
+			while(cur_prop)
+			{
+				if(!strcmp(cur_prop->name,"k"))
+				{
+					// cmp current osm tag key with current rules key:
+					if(cur_prop->children)
+					{
+						key_str=cur_prop->children->content;
+					}
+					else
+					{
+						fprintf(stderr,"%s:%i: error processing XML! 'k' attr have no content!",__FILE__,__LINE__);
+						return RETURN_VALUE_ERROR;
+					}
+				}
+				cur_prop=cur_prop->next;
+			}
+			if(key_str==NULL)
+			{
+				fprintf(stderr,"%s:%i: error processing XML! Not find 'k' attr in <delete> rule!\n",__FILE__,__LINE__);
+				return RETURN_VALUE_ERROR;
+			}
+			else
+			{
+				// if such key not found (nothing deleting) - it is not error
+				if(delete_tag_from_osm(osm_element,key_str)==RETURN_VALUE_ERROR)
+					return RETURN_VALUE_ERROR;
+			}
+			// next tag:
+			cur_rule=cur_rule->next;
+		}
+	}
+	return RETURN_VALUE_SUCCESS;
+}
+
+
+int delete_tag_from_osm(xmlNode* osm_element, xmlChar* key_str)
+{
+	xmlNode *cur_osm_tag=NULL;
+	xmlNode *tag_to_delete=NULL;
+	xmlAttr *properties=NULL;
+	xmlAttr * cur_prop = NULL;
+	xmlChar *osm_str=NULL;
+	int return_status=RETURN_VALUE_FIND_FALSE;
+
+	if(key_str==NULL||osm_element==NULL)
+	{
+		fprintf(stderr,"%s:%i: error input parameters!\n",__FILE__,__LINE__);  
+		return RETURN_VALUE_ERROR;
+	}
+
+	// find tag in OSM-element with <tag k="key" ../>
+
+	// test each osm tags in current osm-element:
+	cur_osm_tag=osm_element->children;
+	while(cur_osm_tag=find_tag(cur_osm_tag,"tag"))
+	{
+		properties=cur_osm_tag->properties;
+		if(properties)
+		{
+			// process key:
+			cur_prop=properties;
+			while(cur_prop)
+			{
+				if(!strcmp(cur_prop->name,"k"))
+				{
+					// cmp current osm tag key with current rules key:
+					if(cur_prop->children)
+					{
+						osm_str=cur_prop->children->content;
+						break;
+					}
+					else
+					{
+						fprintf(stderr,"%s:%i: error processing XML! 'k' attr have no content!",__FILE__,__LINE__);
+						return RETURN_VALUE_ERROR;
+					}
+				}
+				cur_prop=cur_prop->next;
+			}
+			if(osm_str==NULL)
+			{
+				
+#ifdef DEBUG
+				fprintf(stderr,"%s:%i: node have not 'k' value - skip this node\n",__FILE__,__LINE__ );  
+#endif
+				cur_osm_tag=cur_osm_tag->next;
+				continue;
+			}
+		}
+
+		// cmp current 'k' attr with "key"
+		if(str_cmp_ext(osm_str,key_str,FALSE,TRUE)==0)
+		{
+			// find tag!
+#ifdef DEBUG
+			fprintf(stderr,"%s:%i: Delete existing <tag k='%s' ... />\n",__FILE__,__LINE__, osm_str );  
+#endif
+			// TODO  delete element:
+			tag_to_delete=cur_osm_tag;
+			
+			// previous -> next
+			if(cur_osm_tag->prev)cur_osm_tag->prev->next=cur_osm_tag->next;
+			// next -> previous
+			if(cur_osm_tag->next)cur_osm_tag->next->prev=cur_osm_tag->prev;
+
+			xmlFreeNode(cur_osm_tag);
+
+			return RETURN_VALUE_SUCCESS;
+		}
+	
+		// search in next tag:
+		cur_osm_tag=cur_osm_tag->next;
+	}
+	return RETURN_VALUE_FIND_FALSE;
+}
+
+int add_tag_to_osm(xmlNode* osm_element, xmlChar* key_str, xmlChar* value_str)
+{
+	xmlNode * new_node = NULL;
+	xmlAttr * new_attr = NULL;
+
+	if(key_str==NULL||value_str==NULL||osm_element==NULL)
+	{
+		fprintf(stderr,"%s:%i: error input parameters!\n",__FILE__,__LINE__ );  
+		return RETURN_VALUE_ERROR;
+	}
+#ifdef DEBUG
+	fprintf(stderr,"%s:%i: Add new <tag k='%s' v='%s' />\n",__FILE__,__LINE__, key_str, value_str );  
+#endif
+
+	// write new tag:
+	new_node =	xmlNewChild(osm_element, NULL, BAD_CAST "tag", NULL);
+	if(new_node==NULL)
+	{
+		fprintf(stderr,"%s:%i: error xmlNewChild()!\n",__FILE__,__LINE__ );  
+		return RETURN_VALUE_ERROR;
+	}
+		
+	if(xmlNewProp(new_node, BAD_CAST "k", key_str)==NULL)
+	{
+		// new_node free as part of all xml-dom
+		fprintf(stderr,"%s:%i: error xmlNewProp()!\n",__FILE__,__LINE__ );  
+		return RETURN_VALUE_ERROR;
+	}
+	if(xmlNewProp(new_node, BAD_CAST "v", value_str)==NULL)
+	{
+		// new prop from previouse step free as part of all xml-dom
+		fprintf(stderr,"%s:%i: error xmlNewProp()!\n",__FILE__,__LINE__ );  
+		return RETURN_VALUE_ERROR;
 	}
 	return RETURN_VALUE_SUCCESS;
 }

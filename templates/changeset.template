@@ -1,0 +1,6 @@
+<osm>
+<changeset>
+<tag k="created_by" v="osmbot https://github.com/progserega/osmbot"/>
+<tag k="comment" v="test"/>
+</changeset>
+</osm>

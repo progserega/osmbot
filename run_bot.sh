@@ -123,6 +123,8 @@ process_bbox()
 
 # =================== Начало скрипта ====================
 echo "================ Start processing bbox: ${bbox_to_process} by rules.xml =============="
+echo " " >> "${log}"
+echo " " >> "${log}"
 echo "`date +%Y.%m.%d-%T`: ================ Start processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
 # В начале создаём единый пачсет для всех квадратов, чтобы было проще в случае необходимости откатывать изменения:
 # Создаём changeset:
@@ -140,6 +142,9 @@ fi
 if [ ! -z "${changeset_comment_tag}" ]
 then 
 	echo "<tag k=\"comment\" v=\"${changeset_comment_tag}\"/>" >> "${osm_changeset_template_file}"
+	echo "==================================================================================" >> "${log}"
+	echo "||      Create changeset with comment=\"${changeset_comment_tag}\"   ||" >> "${log}"
+	echo "==================================================================================" >> "${log}"
 fi
 echo "</changeset>
 </osm>" >> "${osm_changeset_template_file}"

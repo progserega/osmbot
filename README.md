@@ -17,14 +17,19 @@ to this element add tags, or delete tags, which writed in this rule.
 
 1) Set your options (username, server, path to utils, log path, bbox to process by 
 bot and other - see osmbot.conf_example) to config file:
+
   cp osmbot.conf_example osmbot.conf
+
   vim osmbot.conf
 
 2) Setup rules to process OSM-data (see rules_example.xml for example and comments):
+  
   cp rules_example.xml rules.xml
+  
   vim rules.xml
 
 3) Run bot:
+  
   ./run_bot.sh osmbot.conf 
 
 You may setup many osmbot.conf-files and start osmbot for other tasks. Olso, rule-file

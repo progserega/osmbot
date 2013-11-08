@@ -19,6 +19,8 @@ else
 	echo "============================="
 fi
 
+tmp_file="`mktemp /tmp/osmbotXXXX`"
+
 process_bbox()
 {
 	# parameters - bbox: $1,$2,$3,$4
@@ -31,23 +33,54 @@ process_bbox()
 
 	# правим и сохраняем в out.osm
 	echo "Start parsing:" >> "${log}"
-	./osmpatch 2>/dev/null >> "${log}"
+	./osmpatch > "${tmp_file}"
+	if [ ! 0 -eq $? ]
+	then
+		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"
+		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!" >> "${log}"
+		return 1
+	fi
+	# Выводим список изменённых элементов:
+	echo "`date +%Y.%m.%d-%T`: Success patched elements:"
+	cat "${tmp_file}"|grep "Start patch this element"|sed "s/.*element_url=//"|while read url
+	do
+		echo "${api_server}/${url}"
+	done
+	echo "`date +%Y.%m.%d-%T`: Success patched elements:" >> "${log}"
+	cat "${tmp_file}"|grep "Start patch this element"|sed "s/.*element_url=//"|while read url
+	do
+		echo "${api_server}/${url}" >> "${log}"
+	done
+	
 
 	# генерируем файл изменений:
 	echo "Generate diff-file by osmosis:" >> "${log}"
 	/opt/osmosis/bin/osmosis --read-xml out.osm --read-xml in.osm --derive-change --write-xml-change diff.osm >> "${log}"
+	if [ ! 0 -eq $? ]
+	then
+		echo "`date +%Y.%m.%d-%T`: error execute osmosis!" 
+		echo "`date +%Y.%m.%d-%T`: error execute osmosis!"  >> "${log}"
+		return 1
+	fi
+
 
 	# Сама загрузка:
-	changeset_id="`cat changeset.id`"
-
+	
 	# Меняем changeset-ы в diff-файле:
 	echo "Change changeset id's in diff.osm to changeset='${changeset_id}':" >> "${log}"
-	cat diff.osm|sed "s/changeset=\"[0-9]*\"/changeset=\"${changeset_id}\"/g" > diff.tmp >> "${log}"
+	cat diff.osm|sed "s/changeset=\"[0-9]*\"/changeset=\"${changeset_id}\"/g" > diff.tmp
 	mv diff.tmp diff.osm >> "${log}"
 
 	# Загружаем изменения:
 	echo "Send diff.osm to API-server:" >> "${log}"
-	curl -u "${login}:${passwd}" -d @diff.osm -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" >> "${log}"
+	curl -u "${login}:${passwd}" -d @diff.osm -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" > "${tmp_file}"
+	curl_return_status="$?"
+	if [ ! -z "`cat ${tmp_file}|grep -i error`" -o ! 0 -eq "${curl_return_status}" ]
+	then
+		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
+		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
+		return 1
+	fi
 
 	echo "End processing bbox ${1},${2} - ${3},${4}" >> "${log}"
 	echo "============================================" >> "${log}"
@@ -56,19 +89,20 @@ process_bbox()
 
 
 # =================== Начало скрипта ====================
-
 echo "================ Start processing bbox: ${bbox_to_process} by rules.xml =============="
 echo "`date +%Y.%m.%d-%T`: ================ Start processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
 # В начале создаём единый пачсет для всех квадратов, чтобы было проще в случае необходимости откатывать изменения:
 # Создаём changeset:
 echo "Create changeset:" >> "${log}"
 cat /dev/null> changeset.id
-curl -u "${login}:${passwd}" -o changeset.id -d @templates/changeset.template -X PUT "${api_server}.ru/api/0.6/changeset/create" &>> "${log}"
+curl -u "${login}:${passwd}" -o changeset.id -d @templates/changeset.template -X PUT "${api_server}/api/0.6/changeset/create" &>> "${log}"
 echo "curl_return=$?"
 
 changeset_id="`cat changeset.id`"
 echo "Changeset id=${changeset_id}" >> "${log}"
+echo "Created changeset id=${changeset_id}"
 
+exit_status=0
 
 # get coordinates from bbox:
 x1="`echo ${bbox_to_process}|awk '{print $1}' FS=','`"
@@ -136,7 +170,14 @@ do
 
 			#############################
 			# processing:
-			#process_bbox "${bbox_x1}" "${bbox_y1}" "${bbox_x2}" "${bbox_y2}"
+			process_bbox "${bbox_x1}" "${bbox_y1}" "${bbox_x2}" "${bbox_y2}"
+			if [ ! 0 -eq $? ]
+			then
+				echo "`date +%Y.%m.%d-%T`: error process_bbox()!" 
+				echo "`date +%Y.%m.%d-%T`: error process_bbox()!" >> "${log}"
+				exit_status=1
+				break
+			fi
 
 			# show procent of success:
 			procent_success=`echo "${procent_success} + ${success_procent_by_iteration}"|bc -l`
@@ -154,20 +195,29 @@ do
 	then
 		break
 	fi
+	if [ 1 -eq $exit_status ]
+	then
+		break
+	fi
 done
 
 # Закрываем единый для всех квадратов changeset:
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"
+echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:"
 curl -u "${login}:${passwd}" -X PUT "${api_server}/api/0.6/changeset/${changeset_id}/close" &>> "${log}"
 echo "curl_return=$?"
 
-echo "Success processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
-echo "`date +%Y.%m.%d-%T`: ================ Success processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+if [ 0 -eq "${exit_status}" ]
+then
+		echo "Success processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ================ Success processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+		echo "================ Success processing bbox: ${bbox_to_process} by rules.xml =============="
+else
+		echo "ERROR processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ================ ERROR processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+		echo "================ ERROR processing bbox: ${bbox_to_process} by rules.xml =============="
+fi
 
-
-echo "================ Success processing bbox: ${bbox_to_process} by rules.xml =============="
-
-exit 0
-
-
+rm "${tmp_file}"
+exit ${exit_status}
 

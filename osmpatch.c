@@ -717,7 +717,7 @@ int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)
 		}
 		cur_prop=cur_prop->next;
 	}
-	fprintf(stdout,"\nFull equal OSM-element! Start patch this element! Element type=%s Element id=%s element_url=browse/%s/%s",osm_element->name, id_str,osm_element->name,id_str);
+	fprintf(stdout,"\nFull equal OSM-element! Start patch this element! Element type=%s Element id=%s element_url=browse/%s/%s/history",osm_element->name, id_str,osm_element->name,id_str);
 
 	// process <add> rules:
 	cur_rule=find_tag(rule,"add");

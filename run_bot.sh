@@ -28,11 +28,12 @@ else
 	echo "============================="
 fi
 
-tmp_file="`mktemp /tmp/osmbotXXXX`"
-osm_in_file="`mktemp /tmp/in.osmXXXX`"
-osm_out_file="`mktemp /tmp/out.osmXXXXX`"
-osm_diff_file="`mktemp /tmp/diff.osmXXXX`"
-osm_changeset_template_file="`mktemp /tmp/changeset_template_fileXXXXXX`"
+tmp_file="`mktemp /tmp/osmbot_tmp_file_XXXX`"
+osm_in_file="`mktemp /tmp/osmbot_in.osm_XXXX`"
+osm_out_file="`mktemp /tmp/osmbot_out.osm_XXXXX`"
+osm_diff_file="`mktemp /tmp/osmbot_diff.osm_XXXX`"
+osm_changeset_template_file="`mktemp /tmp/osmbot_changeset_template_file_XXXXXX`"
+error_file="`mktemp /tmp/osmbot_error_file_XXXXXX`"
 
 process_bbox()
 {
@@ -42,7 +43,7 @@ process_bbox()
 
 	# Скачиваем блок:
 	echo "Dounloading bbox from API:" >> "${log}"
-	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" >> "${log}"
+	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" &> "${error_file}"
 	curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
@@ -52,25 +53,24 @@ process_bbox()
 `cat ${osm_in_file}`" 
 		echo "server ansver:
 `cat ${osm_in_file}`" >> "${log}"
+		echo "last 50 lines error-log:" >> "${log}"
+		cat "${error_file}"|tail -n 50 >> "${log}"
 		return 1
 	fi
 
 
 	# правим и сохраняем в out.osm
 	echo "Start parsing:" >> "${log}"
-	"${osmpatch}" -r "${rules_file}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}"
+	"${osmpatch}" -r "${rules_file}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}" 2>"${error_file}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!" >> "${log}"
+		echo "last 50 lines error-log:" >> "${log}"
+		cat "${error_file}"|tail -n 50 >> "${log}"
 		return 1
 	fi
 	# Выводим список изменённых элементов:
-	echo "`date +%Y.%m.%d-%T`: Success patched elements:"
-	cat "${tmp_file}"|grep "Start patch this element"|sed "s/.*element_url=//"|while read url
-	do
-		echo "${api_server}/${url}"
-	done
 	echo "`date +%Y.%m.%d-%T`: Success patched elements:" >> "${log}"
 	cat "${tmp_file}"|grep "Start patch this element"|sed "s/.*element_url=//"|while read url
 	do
@@ -80,11 +80,13 @@ process_bbox()
 
 	# генерируем файл изменений:
 	echo "Generate diff-file by osmosis:" >> "${log}"
-	"${osmosis}" --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change "${osm_diff_file}" >> "${log}"
+	"${osmosis}" --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change "${osm_diff_file}" &> "${error_file}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmosis!" 
 		echo "`date +%Y.%m.%d-%T`: error execute osmosis!"  >> "${log}"
+		echo "last 50 lines error-log:" >> "${log}"
+		cat "${error_file}"|tail -n 50 >> "${log}"
 		return 1
 	fi
 
@@ -98,9 +100,8 @@ process_bbox()
 
 	# Загружаем изменения:
 	echo "Send ${osm_diff_file} to API-server:" >> "${log}"
-	curl -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" > "${tmp_file}"
+	curl -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" &> "${error_file}"
 	curl_return_status="$?"
-	cp "${osm_diff_file}" out2
 	if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
@@ -109,6 +110,8 @@ process_bbox()
 `cat ${osm_diff_file}`" 
 		echo "server ansver:
 `cat ${osm_diff_file}`" >> "${log}"
+		echo "last 50 lines error-log:" >> "${log}"
+		cat "${error_file}"|tail -n 50 >> "${log}"
 		return 1
 	fi
 
@@ -124,7 +127,6 @@ echo "`date +%Y.%m.%d-%T`: ================ Start processing bbox: ${bbox_to_pro
 # В начале создаём единый пачсет для всех квадратов, чтобы было проще в случае необходимости откатывать изменения:
 # Создаём changeset:
 echo "Create changeset:" >> "${log}"
-cat /dev/null> changeset.id
 echo "`date +%Y.%m.%d-%T`: create changeset template:"
 echo "`date +%Y.%m.%d-%T`: create changeset template:" >> "${log}"
 
@@ -142,11 +144,24 @@ fi
 echo "</changeset>
 </osm>" >> "${osm_changeset_template_file}"
 ####################
+cat /dev/null> "${tmp_file}"
+curl -u "${login}:${passwd}" -o "${tmp_file}" -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &> "${error_file}"
+curl_return_status="$?"
+if [ ! 1 -eq "`cat ${tmp_file}|egrep '^[0-9]+$'|wc -l`" -o ! 0 -eq "`cat ${tmp_file}|egrep -v '^[0-9]+$'|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+then
+		echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" 
+		echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" >> "${log}"
+		echo "server ansver:
+		`cat ${tmp_file}`" 
+		echo "server ansver:
+		`cat ${tmp_file}`" >> "${log}"
+		echo "last 50 lines error-log:" >> "${log}"
+		cat "${error_file}"|tail -n 50 >> "${log}"
+		exit 1
+fi
 
-curl -u "${login}:${passwd}" -o changeset.id -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &>> "${log}"
-echo "curl_return=$?"
 
-changeset_id="`cat changeset.id`"
+changeset_id="`cat ${tmp_file}`"
 echo "Changeset id=${changeset_id}" >> "${log}"
 echo "Created changeset id=${changeset_id}"
 
@@ -252,8 +267,21 @@ done
 # Закрываем единый для всех квадратов changeset:
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:"
-curl -u "${login}:${passwd}" -X PUT "${api_server}/api/0.6/changeset/${changeset_id}/close" &>> "${log}"
-echo "curl_return=$?"
+curl -u "${login}:${passwd}" -X PUT "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
+curl_return_status="$?"
+
+if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+then
+		echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" 
+		echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" >> "${log}"
+		echo "server ansver:
+		`cat ${error_file}`" 
+		echo "server ansver:
+		`cat ${error_file}`" >> "${log}"
+		echo "last 50 lines stdout:" >> "${log}"
+		cat "${tmp_file}"|tail -n 50 >> "${log}"
+		exit 1
+fi
 
 if [ 0 -eq "${exit_status}" ]
 then
@@ -271,6 +299,7 @@ rm "${osm_in_file}"
 rm "${osm_out_file}"
 rm "${osm_diff_file}"
 rm "${osm_changeset_template_file}"
+rm "${error_file}"
 
 exit ${exit_status}
 

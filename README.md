@@ -1,7 +1,7 @@
 # Overview
 This is a OSM-bot, which add/remove tags from node/ways by xml-rules.
 
-This bot download quadrates by 0.5 (can change in options) degree of OSM map from api 
+This bot download quadrates by 0.5x0.5 (can change in options) degree of OSM map from api 
 specifed osm-server to file.osm. Then it patch this osm-file.
 Then upload this file to api-server. Download next quadrates, patch, opload and again,
 for process full bbox, which setup in options to processed.

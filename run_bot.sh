@@ -20,6 +20,8 @@ else
 fi
 
 tmp_file="`mktemp /tmp/osmbotXXXX`"
+osm_in_file="in.osm"
+osm_out_file="out.osm"
 
 process_bbox()
 {
@@ -29,7 +31,15 @@ process_bbox()
 
 	# Скачиваем блок:
 	echo "Dounloading bbox from API:" >> "${log}"
-	curl -u "${login}:${passwd}" -o in.osm -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" >> "${log}"
+	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" >> "${log}"
+	curl_return_status="$?"
+	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='|grep 'copyright'`" -o ! 0 -eq "${curl_return_status}" ]
+	then
+		echo "`date +%Y.%m.%d-%T`: error execute curl GET!"
+		echo "`date +%Y.%m.%d-%T`: error execute curl GET!" >> "${log}"
+		return 1
+	fi
+
 
 	# правим и сохраняем в out.osm
 	echo "Start parsing:" >> "${log}"
@@ -55,7 +65,7 @@ process_bbox()
 
 	# генерируем файл изменений:
 	echo "Generate diff-file by osmosis:" >> "${log}"
-	/opt/osmosis/bin/osmosis --read-xml out.osm --read-xml in.osm --derive-change --write-xml-change diff.osm >> "${log}"
+	/opt/osmosis/bin/osmosis --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change diff.osm >> "${log}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmosis!" 

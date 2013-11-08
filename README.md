@@ -44,4 +44,4 @@ bot and other - see osmbot.conf_example) to config file:
   ./run_bot.sh osmbot.conf 
 
 You may setup many osmbot.conf-files and start osmbot for other tasks. Olso, rule-file
-support many <patchset>, which contain other rules for other task.
+support many "patchset", which contain other rules for other task.

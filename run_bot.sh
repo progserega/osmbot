@@ -1,8 +1,12 @@
 #!/bin/bash
 
-config="osmbot.conf"
-osmosis="/opt/osmosis/bin/osmosis"
-osmpatch="/home/Serega/work/osmbot/osmpatch"
+if [ -z "$1" ]
+then
+	echo "Need 1 argument: config file\nExample use:\n   $0 osmbot.conf\n"
+	exit 1
+fi
+
+config="${1}"
 
 source "${config}"
 

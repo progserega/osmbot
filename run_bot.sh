@@ -2,7 +2,9 @@
 
 if [ -z "$1" ]
 then
-	echo "Need 1 argument: config file\nExample use:\n   $0 osmbot.conf\n"
+	echo "Need 1 argument: config file"
+	echo "Example use:"
+	echo "  $0 osmbot.conf\n"
 	exit 1
 fi
 

@@ -1,0 +1,20 @@
+####  Config file for osmbot ####
+
+# Login to api-server:
+login="username"
+
+# Password to api-server:
+passwd="XXXXX"
+
+# Api-server url:
+api_server="http://api06.dev.openstreetmap.org"
+
+# area to process by bot:
+bbox_to_process="129.4189453,42.2285174,139.1748047,48.7199612"
+
+# Process square by 0.5
+step="0.5"
+
+# Log file:
+log="osmbot.log"
+

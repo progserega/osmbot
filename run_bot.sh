@@ -1,6 +1,9 @@
 #!/bin/bash
 
 config="osmbot.conf"
+osmosis="/opt/osmosis/bin/osmosis"
+osmpatch="/home/Serega/work/osmbot/osmpatch"
+
 source "${config}"
 
 # Полученные настройки:
@@ -20,8 +23,10 @@ else
 fi
 
 tmp_file="`mktemp /tmp/osmbotXXXX`"
-osm_in_file="in.osm"
-osm_out_file="out.osm"
+osm_in_file="`mktemp /tmp/in.osmXXXX`"
+osm_out_file="`mktemp /tmp/out.osmXXXXX`"
+osm_diff_file="`mktemp /tmp/diff.osmXXXX`"
+osm_changeset_template_file="`mktemp /tmp/changeset_template_fileXXXXXX`"
 
 process_bbox()
 {
@@ -33,7 +38,7 @@ process_bbox()
 	echo "Dounloading bbox from API:" >> "${log}"
 	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" >> "${log}"
 	curl_return_status="$?"
-	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='|grep 'copyright'`" -o ! 0 -eq "${curl_return_status}" ]
+	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl GET!"
 		echo "`date +%Y.%m.%d-%T`: error execute curl GET!" >> "${log}"
@@ -43,7 +48,7 @@ process_bbox()
 
 	# правим и сохраняем в out.osm
 	echo "Start parsing:" >> "${log}"
-	./osmpatch > "${tmp_file}"
+	"${osmpatch}" -r "${rules_file}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"
@@ -65,7 +70,7 @@ process_bbox()
 
 	# генерируем файл изменений:
 	echo "Generate diff-file by osmosis:" >> "${log}"
-	/opt/osmosis/bin/osmosis --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change diff.osm >> "${log}"
+	"${osmosis}" --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change "${osm_diff_file}" >> "${log}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmosis!" 
@@ -77,15 +82,15 @@ process_bbox()
 	# Сама загрузка:
 	
 	# Меняем changeset-ы в diff-файле:
-	echo "Change changeset id's in diff.osm to changeset='${changeset_id}':" >> "${log}"
-	cat diff.osm|sed "s/changeset=\"[0-9]*\"/changeset=\"${changeset_id}\"/g" > diff.tmp
-	mv diff.tmp diff.osm >> "${log}"
+	echo "Change changeset id's in ${osm_diff_file} to changeset='${changeset_id}':" >> "${log}"
+	cat "${osm_diff_file}"|sed "s/changeset=\"[0-9]*\"/changeset=\"${changeset_id}\"/g" > "${tmp_file}"
+	cat "${tmp_file}" > "${osm_diff_file}" 
 
 	# Загружаем изменения:
-	echo "Send diff.osm to API-server:" >> "${log}"
-	curl -u "${login}:${passwd}" -d @diff.osm -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" > "${tmp_file}"
+	echo "Send ${osm_diff_file} to API-server:" >> "${log}"
+	curl -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" > "${tmp_file}"
 	curl_return_status="$?"
-	if [ ! -z "`cat ${tmp_file}|grep -i error`" -o ! 0 -eq "${curl_return_status}" ]
+	if [ -z "`cat ${osm_diff_file}|grep '<diffResult'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
 		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
@@ -105,7 +110,25 @@ echo "`date +%Y.%m.%d-%T`: ================ Start processing bbox: ${bbox_to_pro
 # Создаём changeset:
 echo "Create changeset:" >> "${log}"
 cat /dev/null> changeset.id
-curl -u "${login}:${passwd}" -o changeset.id -d @templates/changeset.template -X PUT "${api_server}/api/0.6/changeset/create" &>> "${log}"
+echo "`date +%Y.%m.%d-%T`: create changeset template:"
+echo "`date +%Y.%m.%d-%T`: create changeset template:" >> "${log}"
+
+# Формируем changeset template: ########
+echo "<osm>
+<changeset>" > "${osm_changeset_template_file}"
+if [ ! -z "${changeset_created_by_tag}" ]
+then 
+	echo "<tag k=\"created_by\" v=\"${changeset_created_by_tag}\"/>" >> "${osm_changeset_template_file}"
+fi
+if [ ! -z "${changeset_comment_tag}" ]
+then 
+	echo "<tag k=\"comment\" v=\"${changeset_comment_tag}\"/>" >> "${osm_changeset_template_file}"
+fi
+echo "</changeset>
+</osm>" >> "${osm_changeset_template_file}"
+####################
+
+curl -u "${login}:${passwd}" -o changeset.id -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &>> "${log}"
 echo "curl_return=$?"
 
 changeset_id="`cat changeset.id`"
@@ -229,5 +252,10 @@ else
 fi
 
 rm "${tmp_file}"
+rm "${osm_in_file}"
+rm "${osm_out_file}"
+rm "${osm_diff_file}"
+rm "${osm_changeset_template_file}"
+
 exit ${exit_status}
 

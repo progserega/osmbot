@@ -1,4 +1,5 @@
 #include <stdio.h>  
+#include <unistd.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <locale.h>
@@ -40,6 +41,11 @@ struct pointList
 	bool link;
 	struct pointList *next;
 };
+
+// files for processing:
+char     *rules_file = NULL;  
+char     *osm_in_file = NULL;  
+char     *osm_out_file = NULL;  
 
 int process_patchsets(xmlNode * a_node, xmlNode * rules);  
 int process_rules(xmlNode * a_node,xmlNode * rules);
@@ -144,27 +150,31 @@ struct pointList *posList_cur=0;
 int cur_global_id=-1;
 
 int  
-main(int argv,char**argc)  
+main(int argc,char**argv)  
 {  
 
 		xmlDoc         *rules = NULL;  
 		xmlDoc         *osm = NULL;  
 		xmlNode        *rules_root_element = NULL;  
 		xmlNode        *osm_root_element = NULL;  
-		const char     *rules_file = "rules.xml";  
-		const char     *osm_file = "in.osm";  
 		int exit_status=0;
 
 		// for wchar_t:
 		setlocale(LC_ALL, "");
 		setlocale(LC_NUMERIC,"C");
 
-		/*if (argv<3)
+		if(process_command_options(argc,argv)!=0)
 		{
-			fprintf(stderr, "need 2 parametr - osmpatch_rules.xml and input osm-file! exit!");
-			exit -1;
+			fprintf(stderr, "need 3 parametr: rules-file, input and output files.\nUse -h for help.\nexit!\n");
+			return -1;
 		}
-*/
+		if (!osm_in_file||!osm_out_file||!rules_file)
+		{
+			fprintf(stderr, "need 3 parametr: rules-file, input and output files.\nUse -h for help.\nexit!\n");
+			return -1;
+		}
+
+
 		rules = xmlReadFile(rules_file, NULL, 0);  
 		if (rules == NULL)  
 		{  
@@ -183,10 +193,10 @@ main(int argv,char**argc)
 					goto exit;
 				}
 		}  
-		osm = xmlReadFile(osm_file, NULL, 0);  
+		osm = xmlReadFile(osm_in_file, NULL, 0);  
 		if (osm == NULL)  
 		{  
-				fprintf(stderr,"%s:%i: error: could not parse file %s\n", __FILE__,__LINE__, osm_file);  
+				fprintf(stderr,"%s:%i: error: could not parse file %s\n", __FILE__,__LINE__, osm_in_file);  
 				exit_status=1;
 				goto exit;
 		}  
@@ -195,17 +205,17 @@ main(int argv,char**argc)
 				osm_root_element = xmlDocGetRootElement(osm);  
 				if(!osm_root_element)
 				{
-					fprintf(stderr,"%s:%i: error: can not get root xml element from osm-file: %s\n", __FILE__,__LINE__, osm_file);  
+					fprintf(stderr,"%s:%i: error: can not get root xml element from osm-file: %s\n", __FILE__,__LINE__, osm_in_file);  
 					exit_status=1;
 					goto exit;
 				}
 		}  
 		// process each element from osm, test it by tags from rules and patch osm by rules:
 		if(!process_patchsets(osm_root_element,rules_root_element))
-			xmlSaveFileEnc("out.osm", osm, "UTF-8");
+			xmlSaveFileEnc(osm_out_file, osm, "UTF-8");
 		else
 		{
-			fprintf(stderr,"%s:%i: error: process rules! Dont write out xml\n", __FILE__,__LINE__);  
+			fprintf(stderr,"%s:%i: error: process rules! Dont write out xml file '%s'\n", __FILE__,__LINE__,osm_out_file);  
 			exit_status=-1;
 		}
 
@@ -951,4 +961,51 @@ int add_tag_to_osm(xmlNode* osm_element, xmlChar* key_str, xmlChar* value_str)
 		return RETURN_VALUE_ERROR;
 	}
 	return RETURN_VALUE_SUCCESS;
+}
+
+int process_command_options(int argc, char **argv)
+{
+	int aflag = 0;
+	int bflag = 0;
+	char *cvalue = NULL;
+	int index;
+	int c;
+	opterr = 0;
+	while ((c = getopt (argc, argv, "hi:o:r:")) != -1)
+	{
+		switch (c)
+		{
+				case 'i':
+						osm_in_file=optarg;
+						break;
+				case 'o':
+						osm_out_file=optarg;
+						break;
+				case 'r':
+						rules_file=optarg;
+						break;
+				case 'h':
+						// help
+						fprintf (stderr, "This is parsing OSM programm. \n\
+	This programm change input file by rules file and save result to output file. \n\
+	Use: \
+		%s -r rules.xml -i input.osm -o out.osm \n\
+		 \n\
+		options: \n\
+			-r file - file with xml-rules \n\
+			-i file - input file with osm \n\
+			-o file - output file with osm, where programm save result \n\
+			-h - this help\n", argv[0]);
+						break;
+				case '?':
+						if (isprint (optopt))
+								fprintf (stderr, "Unknown option: '-%c'.\n", optopt);
+						else
+								fprintf (stderr, "Unknown option character: '\\x%x'.\n", optopt);
+						return 1;
+				default:
+						return 1;
+		}
+	}
+	return 0;
 }

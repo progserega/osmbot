@@ -1,4 +1,4 @@
-# Intermidate
+# Overview
 This is a OSM-bot, which add/remove tags from node/ways by xml-rules.
 
 This bot download quadrates of OSM map from api specifed osm-server to file.osm.

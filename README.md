@@ -26,7 +26,7 @@ libs: libxml2, glibc
 
 # Use
 
-1) Set your options (username, server, path to utils, log path, bbox to process by 
+1) Set your options (username, api-server url, path to utils, log path, bbox to process by 
 bot and other - see osmbot.conf_example) to config file:
 
   cp osmbot.conf_example osmbot.conf

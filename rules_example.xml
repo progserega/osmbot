@@ -1,16 +1,20 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Командный файл для обработки osm-файла с помощью утилиты osmpatch -->
+<!-- Commands file to process osm-file by osmpatch -->
 <osmpatch>
 <patchset>
 	<!-- Ищем элемент с тегами:-->
+	<!-- Find element with tags:-->
 	<find>
 		<!-- Задаём, какие типы элементов обрабатываем -->
+		<!-- Set, wich type of elements we will be processed -->
 		<type nodes='yes' ways='yes'/>
 		<tag>
 			<!-- full_match='no' - значит условие выполнится, если в OSM-теге найдётся искомая строка, если же full_match='yes' - условие выполнится, 
 				 если строки полностью совпадут. (по умолчанию - yes)
 				 no_case_sensitive='yes' - поиск производится без учёта регистра символов в строках (по умолчанию - no)
 				 -->
+			<!-- full_match='no' - true, if tag have this string, if full_match='yes' - true, if strings full match -->
 			<key full_match='yes'>power</key>
 			<value full_match='yes'>station</value>
 		</tag>
@@ -19,6 +23,7 @@
 			<value full_match='no' no_case_sensitive='yes'>ПС</value>
 		</tag>
 		<!-- параметр skip='yes' указывает, что OSM-элементы, имеющие данные теги и значения - будут исключаться из поиска -->
+		<!-- skip='yes' - skip osm-elements with this tag-->
 		<tag skip='yes'>
 			<key full_match='yes'>name</key>
 			<value full_match='no'>110</value>
@@ -26,28 +31,32 @@
 		<tag>
 			<key full_match='no'>source</key>
 			<!-- если тег <value> не указан, то ищутся все элементы с тегом значения <key> и любым значением <value> -->
+			<!-- if no <value> - find all elements with <key> and any <value> -->
 		</tag>
 	</find>
 
 	<!-- Если такой элемент найден, то обрабатываем его:-->
+	<!-- process finded element -->
 
 	<add>
 		<!-- Добавляем теги к элементу (заменя при наличии) -->
+		<!-- add tags (replace if exist) -->
 		<tag k='power_usage_percent' v='95' />
     	<tag k='power_usage_date' v='2013.10.07' />
 	</add>
 
 	<delete>
 		<!-- Удаляем теги и их значения. Значения тегов в данном случае не нужны - в любом случае тег удаляется. -->
+		<!-- delete tags, value not need in this case -->
 		<tag k='test_tag_for_delete' />
 	</delete>
 
 </patchset>
 
-<!-- Правил <patchset> может быть много -->
+<!-- Правил <patchset> может быть много  - они обрабатываются последовательно для входного OSM-файла -->
+<!-- rules <patchset> can be many - it processed one by next for input osm file -->
 
 <patchset>
-	<!-- Ищем элемент с тегами:-->
 	<find>
 		<type nodes='yes' ways='yes'/>
 		<tag>
@@ -55,24 +64,14 @@
 			<value full_match='no' no_case_sensitive='no'>КТП</value>
 		</tag>
 	</find>
-
-	<!-- Если такой элемент найден, то обрабатываем его:-->
-
 	<add>
-		<!-- Добавляем теги к элементу (заменя при наличии) -->
 		<tag k='power_usage_percent' v='95' />
     	<tag k='power_usage_date' v='2013.10.07' />
 	</add>
 
 	<delete>
-		<!-- Удаляем теги и их значения. Значения тегов в данном случае не нужны - в любом случае тег удаляется. -->
 		<tag k='test_tag_for_delete' />
 	</delete>
-
-	<replace>
-		<!-- Заменяем значение тега, если такой тег существует -->
-		<tag k='replace_tag_test' v='95' />
-	</replace>
 </patchset>
 
 </osmpatch>

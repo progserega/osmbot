@@ -10,12 +10,14 @@ passwd="XXXXXX"
 api_server="http://api06.dev.openstreetmap.org"
 
 # area to process by bot:
-#bbox_to_process="129.4189453,42.2285174,139.1748047,48.7199612"
 # 14-я школа:
-bbox_to_process="131.94051,43.10845,131.94790,43.11498"
+#bbox_to_process="131.94051,43.10845,131.94790,43.11498"
+# primorsky kray:
+bbox_to_process="129.4189453,42.2285174,139.1748047,48.7199612"
 
 rules_file="/home/Serega/work/osmbot/rules.xml"
 
+# value of tags 'created_by' and 'comment', added to changeset:
 changeset_created_by_tag="osmbot https://github.com/progserega/osmbot" 
 changeset_comment_tag="comment of changeset"
 

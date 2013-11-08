@@ -48,6 +48,10 @@ process_bbox()
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl GET!"
 		echo "`date +%Y.%m.%d-%T`: error execute curl GET!" >> "${log}"
+		echo "server ansver:
+`cat ${osm_in_file}`" 
+		echo "server ansver:
+`cat ${osm_in_file}`" >> "${log}"
 		return 1
 	fi
 
@@ -96,10 +100,15 @@ process_bbox()
 	echo "Send ${osm_diff_file} to API-server:" >> "${log}"
 	curl -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" > "${tmp_file}"
 	curl_return_status="$?"
-	if [ -z "`cat ${osm_diff_file}|grep '<diffResult'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
+	cp "${osm_diff_file}" out2
+	if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
 		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
+		echo "server ansver:
+`cat ${osm_diff_file}`" 
+		echo "server ansver:
+`cat ${osm_diff_file}`" >> "${log}"
 		return 1
 	fi
 

@@ -107,6 +107,9 @@ int wc_cmp_ext(wchar_t *where_search, wchar_t *what_search, bool case_sensitive,
 	int not_equal=1;
 	int where_search_index=0, what_search_index=0;
 
+	if(full_match==TRUE && wcslen(where_search)!=wcslen(what_search))
+		return 1;
+
 	for(where_search_index=0;where_search_index<wcslen(where_search);where_search_index++)
 	{
 		if(*(where_search+where_search_index)==*what_search ||

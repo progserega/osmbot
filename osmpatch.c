@@ -694,7 +694,16 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 		}
 		cur_osm_tag=cur_osm_tag->next;
 	}
-	return RETURN_VALUE_FIND_FALSE;
+	if(search_options_skip_element==TRUE)
+	{
+		// not find this tag, but it is success, becouse this tag must be exclude:
+		return RETURN_VALUE_FIND_SUCCESS;
+	}
+	else
+	{
+		// not find this rule and it is false:
+		return RETURN_VALUE_FIND_FALSE;
+	}
 }
 
 int patch_osm_element_by_patchset(xmlNode* osm_element, xmlNode* rule)

@@ -8,7 +8,7 @@
 	<find>
 		<!-- Задаём, какие типы элементов обрабатываем -->
 		<!-- Set, wich type of elements we will be processed -->
-		<type nodes='yes' ways='yes'/>
+		<type nodes='yes' ways='yes' relation='yes' />
 		<tag>
 			<!-- full_match='no' - значит условие выполнится, если в OSM-теге найдётся искомая строка, если же full_match='yes' - условие выполнится, 
 				 если строки полностью совпадут. (по умолчанию - yes)
@@ -58,7 +58,7 @@
 
 <patchset>
 	<find>
-		<type nodes='yes' ways='yes'/>
+		<type nodes='yes' ways='yes' relation='yes' />
 		<tag>
 			<key full_match='yes'>ref</key>
 			<value full_match='no' case_sensitive='no'>КТП</value>

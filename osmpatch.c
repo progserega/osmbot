@@ -29,7 +29,8 @@ enum{
 
 enum{
 	TYPE_NODE = 1,
-	TYPE_WAYS = 2
+	TYPE_WAYS = 2,
+	TYPE_RELATION = 4
 };
 #define POI_TYPE int
 
@@ -291,7 +292,7 @@ int process_rules(xmlNode * osm, xmlNode *rules)
 	xmlNode * type = NULL;
 	xmlAttr * properties = NULL;
 	xmlNode * cur_osm_element = NULL;
-	int types_to_find=TYPE_NODE|TYPE_WAYS;
+	int types_to_find=TYPE_NODE|TYPE_WAYS|TYPE_RELATION;
 	bool find_osm_element_to_process=FALSE;
 	bool skip_osm_element=FALSE;
 	int tags_rules_equal=0;
@@ -322,7 +323,7 @@ int process_rules(xmlNode * osm, xmlNode *rules)
 						else
 							types_to_find^=TYPE_NODE;
 					}
-					if(strcmp(properties->name,"ways")==0)
+					else if(strcmp(properties->name,"ways")==0)
 					{
 						if(strcmp(properties->children->content,"yes")==0)
 						{
@@ -330,6 +331,15 @@ int process_rules(xmlNode * osm, xmlNode *rules)
 						}
 						else
 							types_to_find^=TYPE_WAYS;
+					}
+					else if(strcmp(properties->name,"relation")==0)
+					{
+						if(strcmp(properties->children->content,"yes")==0)
+						{
+							types_to_find|=TYPE_RELATION;
+						}
+						else
+							types_to_find^=TYPE_RELATION;
 					}
 				}
 				properties=properties->next;
@@ -354,22 +364,35 @@ int process_rules(xmlNode * osm, xmlNode *rules)
 	cur_osm_element=osm->children;
 	while(cur_osm_element)
 	{
+		find_osm_element_to_process=0;
 		// check current OSM element for searched types:
-		if(types_to_find&TYPE_NODE)
+		do
 		{
-			if(strcmp(cur_osm_element->name,"node")==0)
-				find_osm_element_to_process=1;
-		}
-		else if(types_to_find&TYPE_WAYS)
-		{
-			if(strcmp(cur_osm_element->name,"way")==0)
-				find_osm_element_to_process=1;
-		}
-		else
-		{
-			fprintf(stderr,"%s:%i: No type of osm element is selected for search! Exit!\n",__FILE__,__LINE__);
-			return RETURN_VALUE_ERROR;
-		}
+			if(types_to_find&TYPE_NODE)
+			{
+				if(strcmp(cur_osm_element->name,"node")==0)
+				{
+					find_osm_element_to_process=1;
+					break;
+				}
+			}
+			if(types_to_find&TYPE_WAYS)
+			{
+				if(strcmp(cur_osm_element->name,"way")==0)
+				{
+					find_osm_element_to_process=1;
+					break;
+				}
+			}
+			if(types_to_find&TYPE_RELATION)
+			{
+				if(strcmp(cur_osm_element->name,"relation")==0)
+				{
+					find_osm_element_to_process=1;
+					break;
+				}
+			}
+		}while(0);
 		if(!find_osm_element_to_process)
 		{
 			cur_osm_element=cur_osm_element->next;

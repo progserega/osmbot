@@ -16,7 +16,7 @@
 #define bool int
 #endif
 
-#define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE FALSE
+#define SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE TRUE
 #define SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE TRUE
 #define SEARCH_OPTIONS_SKIP_ELEMNT_DEFAULT_VALUE FALSE
 
@@ -72,13 +72,13 @@ xmlNode* find_tag(xmlNode * node, char *tag_name)
 	return NULL;
 }
 
-// если no_case_sensitive=TRUE, то поиск происходит без учёта регистра,
+// если case_sensitive=FALSE, то поиск происходит без учёта регистра,
 // если full_match=TRUE, то функция возвращает 0 только в случае полного совпадения строк
 // в противном случае функция возвращает 0 в случае, если в строке where_search полностью
 // присутствует строка what_search
 // в случае, если ничего не найдено - возвращается 1
 // в случае, если произошла ошибка - возвращается -1
-int str_cmp_ext(char *where_search, char *what_search, bool no_case_sensitive, bool full_match)
+int str_cmp_ext(char *where_search, char *what_search, bool case_sensitive, bool full_match)
 {
 	int return_value=-1;
 	wchar_t *where_search_wchar=NULL;
@@ -90,7 +90,7 @@ int str_cmp_ext(char *where_search, char *what_search, bool no_case_sensitive, b
 		if(mbstowcs(where_search_wchar,where_search,strlen(where_search)+1)!=-1 &&
 		   mbstowcs(what_search_wchar,what_search,strlen(what_search)+1)!=-1)
 		   {
-				return_value=wc_cmp_ext(where_search_wchar,what_search_wchar,no_case_sensitive,full_match);
+				return_value=wc_cmp_ext(where_search_wchar,what_search_wchar,case_sensitive,full_match);
 		   }
 		   else
 				return_value=-1;
@@ -102,14 +102,15 @@ int str_cmp_ext(char *where_search, char *what_search, bool no_case_sensitive, b
 }
 
 // search what_search in where_search (wchar_t)
-int wc_cmp_ext(wchar_t *where_search, wchar_t *what_search, bool no_case_sensitive, bool full_match)
+int wc_cmp_ext(wchar_t *where_search, wchar_t *what_search, bool case_sensitive, bool full_match)
 {
 	int not_equal=1;
 	int where_search_index=0, what_search_index=0;
+
 	for(where_search_index=0;where_search_index<wcslen(where_search);where_search_index++)
 	{
 		if(*(where_search+where_search_index)==*what_search ||
-			no_case_sensitive && ( towupper(*(where_search+where_search_index))==towupper(*what_search) )
+			case_sensitive==FALSE && ( towupper(*(where_search+where_search_index))==towupper(*what_search) )
 			)
 		{
 			not_equal=0;
@@ -119,8 +120,8 @@ int wc_cmp_ext(wchar_t *where_search, wchar_t *what_search, bool no_case_sensiti
 				{
 					return 0;
 				}
-				if( (*(where_search+where_search_index+what_search_index)!=*(what_search+what_search_index) && !no_case_sensitive) ||
-					no_case_sensitive && ( towupper(*(where_search+where_search_index+what_search_index) )!= towupper(*(what_search+what_search_index)) ) 
+				if( (*(where_search+where_search_index+what_search_index)!=*(what_search+what_search_index) && case_sensitive==TRUE) ||
+					case_sensitive==FALSE && ( towupper(*(where_search+where_search_index+what_search_index) )!= towupper(*(what_search+what_search_index)) ) 
 				)
 				{
 					not_equal=1;
@@ -429,7 +430,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 
 	/// default search options for keys and values:
 	bool search_options_skip_element=SEARCH_OPTIONS_SKIP_ELEMNT_DEFAULT_VALUE;
-	bool search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+	bool search_options_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
 	bool search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 	xmlAttr * properties = NULL;
 	xmlAttr * cur_prop = NULL;
@@ -463,17 +464,17 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 			// process key:
 			cur_node=find_tag(rules_tag->children,"key");
 			//get search options for this key:
-			search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+			search_options_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
 			search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 			cur_prop=cur_node->properties;
 			while(cur_prop)
 			{
-				if(strcmp(cur_prop->name,"no_case_sensitive")==0)
+				if(strcmp(cur_prop->name,"case_sensitive")==0)
 				{
 					if(strcmp(cur_prop->children->content,"yes")==0)
-						search_options_no_case_sensitive=TRUE;
+						search_options_case_sensitive=TRUE;
 					else
-						search_options_no_case_sensitive=FALSE;
+						search_options_case_sensitive=FALSE;
 				}
 				if(strcmp(cur_prop->name,"full_match")==0)
 				{
@@ -525,7 +526,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 			}
 			if(rules_str!=NULL)
 			{
-				if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
+				if(str_cmp_ext(osm_str,rules_str,search_options_case_sensitive,search_options_full_match)==0)
 				{
 					// find tag!
 #ifdef DEBUG
@@ -581,17 +582,17 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 			}
 			
 			//get search options for this value:
-			search_options_no_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
+			search_options_case_sensitive=SEARCH_OPTIONS_CASE_SENSITIVE_DEFAULT_VALUE;
 			search_options_full_match=SEARCH_OPTIONS_FULL_MATCH_DEFAULT_VALUE;
 			cur_prop=cur_node->properties;
 			while(cur_prop)
 			{
-				if(strcmp(cur_prop->name,"no_case_sensitive")==0)
+				if(strcmp(cur_prop->name,"case_sensitive")==0)
 				{
 					if(strcmp(cur_prop->children->content,"yes")==0)
-						search_options_no_case_sensitive=TRUE;
+						search_options_case_sensitive=TRUE;
 					else
-						search_options_no_case_sensitive=FALSE;
+						search_options_case_sensitive=FALSE;
 				}
 				if(strcmp(cur_prop->name,"full_match")==0)
 				{
@@ -643,7 +644,7 @@ int process_osm_tags_by_current_rule(xmlNode* osm_element, xmlNode* rules_tag)
 			}
 			if(rules_str!=NULL)
 			{
-				if(str_cmp_ext(osm_str,rules_str,search_options_no_case_sensitive,search_options_full_match)==0)
+				if(str_cmp_ext(osm_str,rules_str,search_options_case_sensitive,search_options_full_match)==0)
 				{
 					// find tag!
 #ifdef DEBUG

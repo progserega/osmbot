@@ -273,7 +273,7 @@ done
 # Закрываем единый для всех квадратов changeset:
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:"
-curl -u "${login}:${passwd}" -X PUT "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
+curl -u "${login}:${passwd}" -X PUT -d '' "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
 curl_return_status="$?"
 
 if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]

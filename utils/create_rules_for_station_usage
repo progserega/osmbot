@@ -29,8 +29,10 @@ echo "<patchset>
 	</find>
 	<add>
 		<tag k='power_usage_percent' v='$2' />
-		<tag k='power_usage_comment' v='$3' />
-		<tag k='power_usage_set_date' v='$4' />
+		<tag k='power_usage_mva' v='$3' />
+		<tag k='power_usage_mvt' v='$4' />
+		<tag k='power_usage_comment' v='$5' />
+		<tag k='power_usage_date' v='$6' />
 	</add>
 </patchset>"
 }
@@ -60,7 +62,7 @@ do
 	if [ 1 -eq ${line} ]
 	then
 		# Берём описание:
-		comment="`echo ${text1}|awk '{print $1}' FS=';'|sed 's/"//g'|sed 's/.*на территории Приморского края на/Показания на/'`"
+		power_usage_comment="`echo ${text1}|awk '{print $1}' FS=';'|sed 's/"//g'|sed 's/.*на территории Приморского края на/Показания на/'`"
 	fi
 
 	if [ 5 -gt ${line} ]
@@ -70,15 +72,17 @@ do
 	fi
 	#echo "text1=$text1"
 	name="`echo ${text1}|awk '{print $2}' FS=';'|sed 's/"//g'`"
-	power="`echo ${text1}|awk '{print $20}' FS=';'|sed 's/"//g'`"
-	set_date="`date +%d.%m.%Y`"
+	power_usage_percent="`echo ${text1}|awk '{print $20}' FS=';'|sed 's/"//g'|sed 's/\..*//'`"
+	power_usage_mva="`echo ${text1}|awk '{print $7}' FS=';'|sed 's/"//g'`"
+	power_usage_mvt="`echo ${text1}|awk '{print $8}' FS=';'|sed 's/"//g'`"
+	power_usage_date="`date +%d.%m.%Y`"
 
 	if [[ "В С Е Г О" == "${name}" ]]
 	then
 		continue
 	fi
 	#echo "name=${name}, power=${power} comment=$comment"
-	create_patchset "${name}" "${power}" "${comment}" "${set_date}"
+	create_patchset "${name}" "${power_usage_percent}" "${power_usage_mva}" "${power_usage_mvt}" "${power_usage_comment}" "${power_usage_date}"
 done
 
 create_end

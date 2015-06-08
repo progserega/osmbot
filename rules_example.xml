@@ -13,6 +13,9 @@
 			<!-- full_match='no' - значит условие выполнится, если в OSM-теге найдётся искомая строка, если же full_match='yes' - условие выполнится, 
 				 если строки полностью совпадут. (по умолчанию - yes)
 				 case_sensitive='no' - поиск производится без учёта регистра символов в строках (по умолчанию - yes)
+				 regex='yes' - поиск производится по regex-маске, заданной как значение тега (по умолчанию - no). В случае 'yes' - все остальные теги игнорируются
+				 math='gt' - условие выполнится, если значение тега больше заданного числа 
+				 math='lt' - условие выполнится, значение тега меньше заданного числа 
 				 -->
 			<!-- full_match='no' - true, if tag have this string, if full_match='yes' - true, if strings full match -->
 			<key full_match='yes'>power</key>
@@ -50,6 +53,16 @@
 		<!-- delete tags, value not need in this case -->
 		<tag k='test_tag_for_delete' />
 	</delete>
+
+	<delete_element recursive='yes'>
+		<!-- Удаляем найденный элемент. 
+		Если recursive='yes' - удаляются все вложенные элементы. Например, для отношения - все подчинённые, для линии - все точки этой линии вместе с этой линией
+		Если recursive='no' - удаляется только сам элемент, а объекты, на которых он основан - не удаляются.
+		-->
+		<!-- delete finded element
+		Если recursive='yes' - remove way and it nodes, relation and it elements (ways and nodes)
+		-->
+	</delete_element>
 
 </patchset>
 

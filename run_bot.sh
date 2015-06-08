@@ -292,7 +292,9 @@ fi
 if [ 0 -eq "${exit_status}" ]
 then
 		echo "Success processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}" >> "${log}"
 		echo "`date +%Y.%m.%d-%T`: ================ Success processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}"
 		echo "================ Success processing bbox: ${bbox_to_process} by rules.xml =============="
 else
 		echo "ERROR processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"

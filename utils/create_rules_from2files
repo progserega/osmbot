@@ -1,0 +1,68 @@
+#!/bin/bash
+############################# Функции ################################
+create_header()
+{
+echo "<?xml version='1.0' encoding='UTF-8'?>
+<!-- Командный файл для обработки osm-файла с помощью утилиты osmpatch -->
+<osmpatch>"
+}
+
+create_end()
+{
+echo "</osmpatch>"
+}
+
+
+create_patchset()
+{
+echo "<patchset>
+	<find>
+		<type nodes='yes' ways='yes' relation='yes'/>
+		<tag>
+			<key full_match='yes'>power</key>
+			<value full_match='yes'>station</value>
+		</tag>
+		<tag>
+			<key full_match='yes'>name</key>
+			<value full_match='yes' case_sensitive='yes'>$1</value>
+		</tag>
+	</find>
+	<add>
+		<tag k='name' v='$2' />
+	</add>
+</patchset>"
+}
+######################################################################
+
+
+# Основной скрипт
+if [ -z "${2}" ]
+then
+	echo "Необходимо указать два входных файла:"
+	echo "Пример:"
+	echo "$0 файл_с_именами_в_базе файл_с_именами_на_которые_меняем"
+	exit 1
+fi
+
+create_header
+
+
+in1="$1"
+in2="$2"
+line=0
+cat "${in1}"|while read text1
+do
+	line=`expr $line + 1`
+	text2="`cat ${in2}|head -n $line|tail -n 1`"
+
+	if [[ ! "${text1}" == "${text2}" ]]
+	then
+		#echo "text1=$text1, text2=$text2"
+		create_patchset "$text1" "$text2"
+	fi
+done
+
+create_end
+
+exit 0
+

@@ -86,25 +86,28 @@ def find_rule_tag_in_osm_element(element, tags):
 			# Берём искомое значение:
 			val_rule_text=tag.text
 
-		# Перебираем все теги в OSM-элементе:
-		for osm_tag in element:
-			if len(osm_tag):
-				# Для каждого тега:
-				if osm_tag.tag=="tag":
-					# Берём имя тега:
-					src_text=osm_tag.get('k')
-					# Проверяем имя тега OSM на соответствие искомому тегу правил:
-					if check_param_by_rule(src_text, key_rule_text, key_opt):
-						# Если тег совпал с искомым, проверяем, если нужно значние тега:
-						if find_value:
-							src_text=osm_tag.get('v')
-							# Проверяем значение тега OSM на соответствие значению искомого тега правил:
-							if check_param_by_rule(src_text, val_rule_text, val_opt):
-								# совпало, значит сообщаем об успехе:
-								return True
-						else:
-							# Т.к. значение искать не нужно, то сообщаем об успехе:
-							return True
+	# Перебираем все теги в OSM-элементе:
+	for osm_tag in element:
+		if DEBUG:
+			print("DEBUG: find_rule_tag_in_osm_element(): osm_tag", osm_tag.tag)
+		# Для каждого тега:
+		if osm_tag.tag=="tag":
+			# Берём имя тега:
+			src_text=osm_tag.get('k')
+			if DEBUG:
+				print("DEBUG: find_rule_tag_in_osm_element(): k=%s" % src_text)
+			# Проверяем имя тега OSM на соответствие искомому тегу правил:
+			if check_param_by_rule(src_text, key_rule_text, key_opt):
+				# Если тег совпал с искомым, проверяем, если нужно значние тега:
+				if find_value:
+					src_text=osm_tag.get('v')
+					# Проверяем значение тега OSM на соответствие значению искомого тега правил:
+					if check_param_by_rule(src_text, val_rule_text, val_opt):
+						# совпало, значит сообщаем об успехе:
+						return True
+				else:
+					# Т.к. значение искать не нужно, то сообщаем об успехе:
+					return True
 	# Не нашли теги в элементе:
 	return False
 						
@@ -130,12 +133,14 @@ def get_rule_tag_param(tag):
 				opt["case_sensitive"]=False
 		if param_key=="math":
 			opt["math"]=tag.get(param_key).lower()
+	if DEBUG:
+		print("DEBUG: get_rule_tag_param(): return opt", opt)
 	return opt
 
 # Проверяем значение на соответствие правилу поиска:
 def check_param_by_rule(src_text, rule_text, opt):
 	if DEBUG:
-		print("ищем '%s' в '%s'" % (rule_text, src_text))
+		print("find '%s' in '%s'" % (rule_text.encode("utf8"), src_text.encode("utf8")))
 	if opt["regex"]:
 		if re.search(rule_text, src_text) is not None:
 			if DEBUG:
@@ -216,17 +221,17 @@ for relation_id in relations:
 
 
 
-if DEBUG:
-	print (etree.tostring(osmpatch,pretty_print=True, encoding='unicode'))
+#if DEBUG:
+#	print (etree.tostring(osmpatch,pretty_print=True, encoding='unicode'))
 
 string=etree.tostring(osmpatch, xml_declaration=True, encoding='UTF-8', pretty_print=True )
 f=open(sys.argv[3],"w+")
 f.write(string)
 f.close
 
-print ("nodes", nodes)
-for i in nodes:
-	for key in nodes[i].keys():
-		print (key,"=",nodes[i].get(key))
+#print ("nodes", nodes)
+#for i in nodes:
+#	for key in nodes[i].keys():
+#		print (key,"=",nodes[i].get(key))
 
 

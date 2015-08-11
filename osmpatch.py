@@ -5,8 +5,8 @@ from lxml import etree
 import sys
 import re
 
-DEBUG=False
-#DEBUG=True
+#DEBUG=False
+DEBUG=True
 
 def patch(element, rules_root):
 	# Перебираем все patchset-ы:
@@ -94,36 +94,55 @@ def patch_delete_element(element,rule):
 		if rule.get("recursive").lower()=="yes":
 			recursive=True
 	if recursive:
-	 	if element.tag==""
+	 	remove_element_recurse(element)
 	else:
 		# Удаляем элемент без дочерних элементов:
 		parent=element.getparent()
 		parent.remove(element)
 	return
-def remove_element_recurse(root_osm,element):
+
+def remove_element_recurse(element):
+	if DEBUG:
+		print("DEBUG: remove_element_recurse() element", element)
+	# Удаляем дочерние элементы:
 	for sub_element in element:
-		if sub_element.tag="nd":
+		if sub_element.tag=="nd":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
-				# ищем точку:
-				for osm_elem in root_osm:
-					if osm_elem.tag=="node":
-						if "id" in osm_elem.keys():
-							if osm_elem.get("id")==ref:
-								# удаляем точку из OSM:
-								root_osm.remove(tag)
-								break
+				root_osm=element.getparent()
+				print("root_osm", root_osm)
+				elem=find_element_by_id(root_osm,ref)
+				if elem is not None:
+					if DEBUG:
+						print("DEBUG: remove_element_recurse() remove element with id=%s" % ref, element)
+					root_osm.remove(element)
 
-
-
-		elif sub_element.tag="way":
+		elif sub_element.tag=="way":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
-				remove_way(ref)
-		elif sub_element.tag="relation":
+				elem=find_element_by_id(root_osm,ref)
+				if elem is not None:
+					remove_element_recurse(element)
+
+		elif sub_element.tag=="relation":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
-				remove_way(ref)
+				elem=find_element_by_id(root_osm,ref)
+				if elem is not None:
+					remove_element_recurse(element)
+
+	# удаляем сам элемент:
+	parent=element.getparent()
+	parent.remove(element)
+	return
+
+def find_element_by_id(root_osm,osm_id):
+	# ищем элемент с начала OSM-xml:
+	for osm_elem in root_osm:
+		if osm_elem.tag=="node":
+			if "id" in osm_elem.keys():
+				if osm_elem.get("id")==osm_id:
+					return osm_elem
 
 def process_find(element, rule):
 	if DEBUG:

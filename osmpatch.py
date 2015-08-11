@@ -5,8 +5,8 @@ from lxml import etree
 import sys
 import re
 
-#DEBUG=False
-DEBUG=True
+DEBUG=False
+#DEBUG=True
 
 def patch(element, rules_root):
 	# Перебираем все patchset-ы:
@@ -22,7 +22,57 @@ def process_patchset(element, patchset):
 			if process_find(element,rule):
 				if DEBUG:
 					print("Найден элемент")
-				# TODO добавляем обрабочик для успешно найденного элемента:
+				patch_element_by_rule(element,patchset)
+
+def patch_element_by_rule(element,patchset):
+	# TODO патчим элемент по заданным в patchset-е правилам:
+	for rule in patchset:
+		if rule.tag=="add":
+			patch_add_tags_to_element(element,rule)
+		elif rule.tag=="delete":
+			patch_delete_tags_from_element(element,rule)
+		elif rule.tag=="delete_element":
+			patch_delete_element(element,rule)
+	return
+
+def patch_add_tags_to_element(element,rule):
+	# добавляем теги к элементу:
+	for tag in rule:
+		# Для каждого тега "tag" в правиле "add":
+		if tag.tag=="tag":
+			# Берём ключи:
+			if "k" in tag.keys() and "v" in tag.keys():
+				k=tag.get("k")
+				v=tag.get("v")
+				# Добавляем соответствующие теги в "element":
+				if DEBUG:
+					print ("DEBUG: patch_element_by_rule() add k=%s, v=%s to element" % (k,v))
+
+				# Ищем, есть ли такие теги в этом элементе:
+				update=False
+				for osm_tag in element:
+					if osm_tag.tag=="tag":
+						if "k" in osm_tag.keys():
+							if osm_tag.get("k")==k:
+								update=True
+								osm_tag.set("v",v)
+								break
+				if not update:
+					# Создаём новую ветку xml в виде тега tag и соответствующих атрибутов:
+					new_tag=etree.Element("tag") 
+					new_tag.set("k", k)
+					new_tag.set("v", v)
+					# добавляем эту ветку в основное дерево:
+					element.append(new_tag)
+	return
+
+def patch_delete_tags_from_element(element,rule):
+	# удаляем теги у элемента:
+	return
+
+def patch_delete_element(element,rule):
+	# удаляем элемент:
+	return
 
 def process_find(element, rule):
 	if DEBUG:
@@ -178,9 +228,6 @@ if len(sys.argv) < 4:
 	print("	%s in.osm rules.xml out.xml" % sys.argv[0])
 	sys.exit(1)
 
-# Формируем структуру патчсета:
-osmpatch = etree.Element("osmpatch")
-
 osm = etree.parse(sys.argv[1])
 osm_root = osm.getroot()
 #print (etree.tostring(osm_root,pretty_print=True, encoding='unicode'))
@@ -196,13 +243,16 @@ for node in osm_root:
 		continue
 	# Формируем списки точек, линий, отношений:
 	if node.tag=="node":
-		print (node.keys())
+		if DEBUG:
+			print ("DEBUG: node.keys: ", node.keys())
 		nodes[node.get("id")]=node
 	if node.tag=="way":
-		print (node.keys())
+		if DEBUG:
+			print ("DEBUG: node.keys: ", node.keys())
 		ways[node.get("id")]=node
 	if node.tag=="relation":
-		print (node.keys())
+		if DEBUG:
+			print ("DEBUG: node.keys: ", node.keys())
 		relations[node.get("id")]=node
 
 # Проверяем последовательно все элементы:
@@ -220,11 +270,10 @@ for relation_id in relations:
 
 
 
-
 #if DEBUG:
 #	print (etree.tostring(osmpatch,pretty_print=True, encoding='unicode'))
 
-string=etree.tostring(osmpatch, xml_declaration=True, encoding='UTF-8', pretty_print=True )
+string=etree.tostring(osm, xml_declaration=True, encoding='UTF-8', pretty_print=True )
 f=open(sys.argv[3],"w+")
 f.write(string)
 f.close

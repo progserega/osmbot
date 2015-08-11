@@ -25,7 +25,7 @@ def process_patchset(element, patchset):
 				patch_element_by_rule(element,patchset)
 
 def patch_element_by_rule(element,patchset):
-	# TODO патчим элемент по заданным в patchset-е правилам:
+	# патчим элемент по заданным в patchset-е правилам:
 	for rule in patchset:
 		if rule.tag=="add":
 			patch_add_tags_to_element(element,rule)
@@ -104,32 +104,35 @@ def patch_delete_element(element,rule):
 def remove_element_recurse(element):
 	if DEBUG:
 		print("DEBUG: remove_element_recurse() element", element)
+	root_osm=element.getparent()
 	# Удаляем дочерние элементы:
 	for sub_element in element:
 		if sub_element.tag=="nd":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
-				root_osm=element.getparent()
-				print("root_osm", root_osm)
+				if DEBUG:
+					print("DEBUG: remove_element_recurse() prepare delete subelement with id=%s from element:" % ref, element)
+				if DEBUG:
+					print("DEBUG: remove_element_recurse(): root_osm", root_osm)
 				elem=find_element_by_id(root_osm,ref)
 				if elem is not None:
 					if DEBUG:
 						print("DEBUG: remove_element_recurse() remove element with id=%s" % ref, element)
-					root_osm.remove(element)
+					root_osm.remove(elem)
 
 		elif sub_element.tag=="way":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
 				elem=find_element_by_id(root_osm,ref)
 				if elem is not None:
-					remove_element_recurse(element)
+					remove_element_recurse(elem)
 
 		elif sub_element.tag=="relation":
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
 				elem=find_element_by_id(root_osm,ref)
 				if elem is not None:
-					remove_element_recurse(element)
+					remove_element_recurse(elem)
 
 	# удаляем сам элемент:
 	parent=element.getparent()
@@ -264,7 +267,7 @@ def check_param_by_rule(src_text, rule_text, opt):
 	if opt["regex"]:
 		if re.search(rule_text, src_text) is not None:
 			if DEBUG:
-				print("src_text='%s' соответствует регулярному выражению: '%s'" % (src_text,rule_text))
+				print("src_text='%s' соответствует регулярному выражению: '%s'" % (src_text.encode("utf8"),rule_text.encode("utf8")))
 			return True
 	elif opt["math"] !="no":
 		if opt["math"]=="lt":

@@ -46,7 +46,7 @@ def patch_add_tags_to_element(element,rule):
 				v=tag.get("v")
 				# Добавляем соответствующие теги в "element":
 				if DEBUG:
-					print ("DEBUG: patch_element_by_rule() add k=%s, v=%s to element" % (k,v))
+					print ("DEBUG: patch_add_tags_to_element() add k=%s, v=%s to element" % (k,v))
 
 				# Ищем, есть ли такие теги в этом элементе:
 				update=False
@@ -68,11 +68,62 @@ def patch_add_tags_to_element(element,rule):
 
 def patch_delete_tags_from_element(element,rule):
 	# удаляем теги у элемента:
+	for tag in rule:
+		# Для каждого тега "tag" в правиле "add":
+		if tag.tag=="tag":
+			# Берём ключи:
+			if "k" in tag.keys():
+				k=tag.get("k")
+				# удаляем соответствующие теги из "element":
+				if DEBUG:
+					print ("DEBUG: patch_delete_tags_from_element() delete tag k=%s from element" % k)
+
+				# Ищем, есть ли такие теги в этом элементе:
+				for osm_tag in element:
+					if osm_tag.tag=="tag":
+						if "k" in osm_tag.keys():
+							if osm_tag.get("k")==k:
+								element.remove(osm_tag)
+								break
 	return
 
 def patch_delete_element(element,rule):
 	# удаляем элемент:
+	recursive=False
+	if "recursive" in rule.keys():
+		if rule.get("recursive").lower()=="yes":
+			recursive=True
+	if recursive:
+	 	if element.tag==""
+	else:
+		# Удаляем элемент без дочерних элементов:
+		parent=element.getparent()
+		parent.remove(element)
 	return
+def remove_element_recurse(root_osm,element):
+	for sub_element in element:
+		if sub_element.tag="nd":
+			if "ref" in sub_element.keys():
+				ref=sub_element.get("ref")
+				# ищем точку:
+				for osm_elem in root_osm:
+					if osm_elem.tag=="node":
+						if "id" in osm_elem.keys():
+							if osm_elem.get("id")==ref:
+								# удаляем точку из OSM:
+								root_osm.remove(tag)
+								break
+
+
+
+		elif sub_element.tag="way":
+			if "ref" in sub_element.keys():
+				ref=sub_element.get("ref")
+				remove_way(ref)
+		elif sub_element.tag="relation":
+			if "ref" in sub_element.keys():
+				ref=sub_element.get("ref")
+				remove_way(ref)
 
 def process_find(element, rule):
 	if DEBUG:

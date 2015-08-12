@@ -5,8 +5,8 @@ from lxml import etree
 import sys
 import re
 
-#DEBUG=False
-DEBUG=True
+DEBUG=False
+#DEBUG=True
 
 def patch(element, rules_root):
 	# Перебираем все patchset-ы:

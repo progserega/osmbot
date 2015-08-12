@@ -3,6 +3,7 @@
 #
 from lxml import etree
 import sys
+import getopt
 import re
 
 DEBUG=False
@@ -324,24 +325,71 @@ def check_param_by_rule(src_text, rule_text, opt):
 	# Не соответствует:
 	return False
 
-	
 
-# ================= main =================
+def print_help():
+	print("""
+This is parsing OSM programm. 
+	This programm change input file by rules file and save result to output file. 
+	Use:            
+		%(script_name)s -r rules.xml -i input.osm -o out.osm 
+
+options: 
+	-r file - file with xml-rules 
+	-i file - input file with osm 
+	-o file - output file with osm, where programm save result 
+	-h - this help
+need 3 parametr: rules-file, input and output files.
+Use -h for help.
+exit!
+""" % {"script_name":sys.argv[0]})
+
+def parse_opts():
+	inputfile = ''
+	outputfile = ''
+	try:
+		opts, args = getopt.getopt(sys.argv[1:],"hr:i:o:",["help","rules=","infile=","outfile="])
+	except getopt.GetoptError as err:
+		print str(err) # will print something like "option -a not recognized"
+		print_help()
+		sys.exit(2)
+
+	for opt, arg in opts:
+		if opt in ("-h", "--help"):
+			print_help()
+			sys.exit()
+		elif opt in ("-i", "--infile"):
+			global in_file
+			in_file = arg
+		elif opt in ("-o", "--outfile"):
+			global out_file
+			out_file = arg
+		elif opt in ("-r", "--rules"):
+			global rules_file 
+			rules_file = arg
+		elif opt in ("-d", "--debug"):
+			global DEBUG 
+			DEBUG = True
+
+#################  Main  ##################
 nodes={}
 ways={}
 relations={}
 
-if len(sys.argv) < 4:
-	print("Необходимо три аргумента - входной файл OSM, файл правил и выходной файл OSM")
-	print("Например:")
-	print("	%s in.osm rules.xml out.xml" % sys.argv[0])
-	sys.exit(1)
+in_file=''
+out_file=''
+rules_file=''
+DEBUG=False
 
-osm = etree.parse(sys.argv[1])
+parse_opts()
+if in_file=='' or out_file=='' or rules_file=='':
+	print_help()
+	sys.exit(2)
+
+osm = etree.parse(in_file)
 osm_root = osm.getroot()
 #print (etree.tostring(osm_root,pretty_print=True, encoding='unicode'))
 
-rules = etree.parse(sys.argv[2])
+rules = etree.parse(rules_file)
 rules_root = rules.getroot()
 #print (etree.tostring(rules_root,pretty_print=True, encoding='unicode'))
 
@@ -383,7 +431,7 @@ for relation_id in relations:
 #	print (etree.tostring(osmpatch,pretty_print=True, encoding='unicode'))
 
 string=etree.tostring(osm, xml_declaration=True, encoding='UTF-8', pretty_print=True )
-f=open(sys.argv[3],"w+")
+f=open(out_file,"w+")
 f.write(string)
 f.close
 

@@ -28,4 +28,4 @@ step="0.5"
 log="/tmp/osmbot.log"
 
 osmosis="/opt/osmosis/bin/osmosis"
-osmpatch="/home/Serega/work/osmbot/osmpatch"
+osmpatch="/home/Serega/work/osmbot/osmpatch.py"

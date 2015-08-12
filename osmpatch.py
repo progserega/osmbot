@@ -96,9 +96,17 @@ def patch_delete_element(element,rule):
 	if recursive:
 	 	remove_element_recurse(element)
 	else:
-		# Удаляем элемент без дочерних элементов:
-		parent=element.getparent()
-		parent.remove(element)
+		num_link=get_num_link_to_this_elem(element) 
+		if num_link == -1:
+			print ("ERROR parsing OSM with element", element)
+			sys.exit(1)
+		if num_link <= 1:
+			# Удаляем элемент без дочерних элементов:
+			parent=element.getparent()
+			parent.remove(element)
+		else:
+			if DEBUG:
+				print("DEBUG: patch_delete_element(): element have more 1 link - skip delete", element)
 	return
 
 def remove_element_recurse(element):
@@ -112,37 +120,65 @@ def remove_element_recurse(element):
 				ref=sub_element.get("ref")
 				if DEBUG:
 					print("DEBUG: remove_element_recurse() prepare delete subelement with id=%s from element:" % ref, element)
-				if DEBUG:
-					print("DEBUG: remove_element_recurse(): root_osm", root_osm)
-				elem=find_element_by_id(root_osm,ref)
+				elem=find_element_by_id(root_osm,ref,"node")
 				if elem is not None:
 					if DEBUG:
 						print("DEBUG: remove_element_recurse() remove element with id=%s" % ref, element)
-					root_osm.remove(elem)
-
-		elif sub_element.tag=="way":
-			if "ref" in sub_element.keys():
-				ref=sub_element.get("ref")
-				elem=find_element_by_id(root_osm,ref)
-				if elem is not None:
 					remove_element_recurse(elem)
 
-		elif sub_element.tag=="relation":
-			if "ref" in sub_element.keys():
+		elif sub_element.tag=="member":
+			if "type" in sub_element.keys() and "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
-				elem=find_element_by_id(root_osm,ref)
+				osm_type=sub_element.get("type")
+				elem=find_element_by_id(root_osm,ref,osm_type)
 				if elem is not None:
 					remove_element_recurse(elem)
 
 	# удаляем сам элемент:
-	parent=element.getparent()
-	parent.remove(element)
+	# Проверяем, что на этот элемент не больше одной ссылки (точка состоит только в одной линии, линия находится только в одном отношении):
+	num_link=get_num_link_to_this_elem(element) 
+	if num_link == -1:
+		print ("ERROR parsing OSM with element", element)
+		sys.exit(1)
+	if num_link <= 1:
+		parent=element.getparent()
+		parent.remove(element)
+	else:
+		if DEBUG:
+			print("DEBUG: remove_element_recurse(): element have more 1 link - skip delete", element)
 	return
 
-def find_element_by_id(root_osm,osm_id):
+def get_num_link_to_this_elem(element):
+	num_link=0
+	element_id=0
+	osm_type=element.tag
+
+	if "id" in element.keys():
+		element_id=element.get("id")
+	else:
+	 	return -1
+
+	root_osm=element.getparent()
+	for sub_element in root_osm:
+		if sub_element.tag=="relation":
+			for elem in sub_element:
+				if elem.tag=="member":
+					if "type" in elem.keys() and "ref" in elem.keys():
+						if elem.get("type") == osm_type:
+							if elem.get("ref") == element_id:
+								num_link+=1
+		if sub_element.tag=="way" and osm_type=="node":
+			for elem in sub_element:
+				if elem.tag=="nd":
+					if "ref" in elem.keys():
+						if elem.get("ref") == element_id:
+							num_link+=1
+	return num_link
+
+def find_element_by_id(root_osm,osm_id,osm_type):
 	# ищем элемент с начала OSM-xml:
 	for osm_elem in root_osm:
-		if osm_elem.tag=="node":
+		if osm_elem.tag==osm_type:
 			if "id" in osm_elem.keys():
 				if osm_elem.get("id")==osm_id:
 					return osm_elem
@@ -316,16 +352,16 @@ for node in osm_root:
 		continue
 	# Формируем списки точек, линий, отношений:
 	if node.tag=="node":
-		if DEBUG:
-			print ("DEBUG: node.keys: ", node.keys())
+#		if DEBUG:
+#			print ("DEBUG: node.keys: ", node.keys())
 		nodes[node.get("id")]=node
 	if node.tag=="way":
-		if DEBUG:
-			print ("DEBUG: node.keys: ", node.keys())
+#		if DEBUG:
+#			print ("DEBUG: node.keys: ", node.keys())
 		ways[node.get("id")]=node
 	if node.tag=="relation":
-		if DEBUG:
-			print ("DEBUG: node.keys: ", node.keys())
+#		if DEBUG:
+#			print ("DEBUG: node.keys: ", node.keys())
 		relations[node.get("id")]=node
 
 # Проверяем последовательно все элементы:

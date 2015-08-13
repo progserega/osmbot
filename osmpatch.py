@@ -5,6 +5,7 @@ from lxml import etree
 import sys
 import getopt
 import re
+import os
 
 DEBUG=False
 #DEBUG=True
@@ -22,7 +23,7 @@ def process_patchset(element, patchset):
 		if rule.tag=="find":
 			if process_find(element,rule):
 				if DEBUG:
-					print("Найден элемент")
+					os.write(2,"\nfinded element!")
 				patch_element_by_rule(element,patchset)
 
 def patch_element_by_rule(element,patchset):
@@ -47,7 +48,7 @@ def patch_add_tags_to_element(element,rule):
 				v=tag.get("v")
 				# Добавляем соответствующие теги в "element":
 				if DEBUG:
-					print ("DEBUG: patch_add_tags_to_element() add k=%s, v=%s to element" % (k,v))
+					os.write(2,"\nDEBUG: patch_add_tags_to_element() add k=%s, v=%s to element" % (k.encode("utf8"),v.encode("utf8")))
 
 				# Ищем, есть ли такие теги в этом элементе:
 				update=False
@@ -77,7 +78,7 @@ def patch_delete_tags_from_element(element,rule):
 				k=tag.get("k")
 				# удаляем соответствующие теги из "element":
 				if DEBUG:
-					print ("DEBUG: patch_delete_tags_from_element() delete tag k=%s from element" % k)
+					os.write(2,"\nDEBUG: patch_delete_tags_from_element() delete tag k=%s from element" % k.encode("utf8"))
 
 				# Ищем, есть ли такие теги в этом элементе:
 				for osm_tag in element:
@@ -99,7 +100,7 @@ def patch_delete_element(element,rule):
 	else:
 		num_link=get_num_link_to_this_elem(element) 
 		if num_link == -1:
-			print ("ERROR parsing OSM with element", element)
+			os.write(2,"\nERROR parsing OSM with element: %s", element.tag)
 			sys.exit(1)
 		if num_link <= 1:
 			# Удаляем элемент без дочерних элементов:
@@ -107,12 +108,12 @@ def patch_delete_element(element,rule):
 			parent.remove(element)
 		else:
 			if DEBUG:
-				print("DEBUG: patch_delete_element(): element have more 1 link - skip delete", element)
+				os.write(2,"\nDEBUG: patch_delete_element(): element have more 1 link - skip delete: %s" % element.tag)
 	return
 
 def remove_element_recurse(element):
 	if DEBUG:
-		print("DEBUG: remove_element_recurse() element", element)
+		os.write(2,"\nDEBUG: remove_element_recurse() element: %s" % element.tag)
 	root_osm=element.getparent()
 	# Удаляем дочерние элементы:
 	for sub_element in element:
@@ -120,11 +121,11 @@ def remove_element_recurse(element):
 			if "ref" in sub_element.keys():
 				ref=sub_element.get("ref")
 				if DEBUG:
-					print("DEBUG: remove_element_recurse() prepare delete subelement with id=%s from element:" % ref, element)
+					os.write(2,"\nDEBUG: remove_element_recurse() prepare delete subelement with id=%s from element: %s" % (ref, element.tag))
 				elem=find_element_by_id(root_osm,ref,"node")
 				if elem is not None:
 					if DEBUG:
-						print("DEBUG: remove_element_recurse() remove element with id=%s" % ref, element)
+						os.write(2,"\nDEBUG: remove_element_recurse() remove element with id=%s, element: %s" % (ref, element.tag))
 					remove_element_recurse(elem)
 
 		elif sub_element.tag=="member":
@@ -139,14 +140,14 @@ def remove_element_recurse(element):
 	# Проверяем, что на этот элемент не больше одной ссылки (точка состоит только в одной линии, линия находится только в одном отношении):
 	num_link=get_num_link_to_this_elem(element) 
 	if num_link == -1:
-		print ("ERROR parsing OSM with element", element)
+		os.write(2,"ERROR parsing OSM with element: %s", element.tag)
 		sys.exit(1)
 	if num_link <= 1:
 		parent=element.getparent()
 		parent.remove(element)
 	else:
 		if DEBUG:
-			print("DEBUG: remove_element_recurse(): element have more 1 link - skip delete", element)
+			os.write(2,"\nDEBUG: remove_element_recurse(): element have more 1 link - skip delete: %s" % element.tag)
 	return
 
 def get_num_link_to_this_elem(element):
@@ -186,7 +187,7 @@ def find_element_by_id(root_osm,osm_id,osm_type):
 
 def process_find(element, rule):
 	if DEBUG:
-		print("DEBUG: process_find")
+		os.write(2,"\nDEBUG: process_find")
 	find_ways=True
 	find_nodes=True
 	find_relations=True
@@ -229,7 +230,7 @@ def process_find(element, rule):
 
 def find_rule_tag_in_osm_element(element, tags):
 	if DEBUG:
-		print("DEBUG: find_rule_tag_in_osm_element")
+		os.write(2,"\nDEBUG: find_rule_tag_in_osm_element")
 	# По умолчанию считаем, что ищем только имя тега OSM, без его значения:
 	find_value=False
 	# Берём параметры поиска:
@@ -249,13 +250,13 @@ def find_rule_tag_in_osm_element(element, tags):
 	# Перебираем все теги в OSM-элементе:
 	for osm_tag in element:
 		if DEBUG:
-			print("DEBUG: find_rule_tag_in_osm_element(): osm_tag", osm_tag.tag)
+			os.write(2,"\nDEBUG: find_rule_tag_in_osm_element(): osm_tag: %s" % osm_tag.tag)
 		# Для каждого тега:
 		if osm_tag.tag=="tag":
 			# Берём имя тега:
 			src_text=osm_tag.get('k')
 			if DEBUG:
-				print("DEBUG: find_rule_tag_in_osm_element(): k=%s" % src_text)
+				os.write(2,"\nDEBUG: find_rule_tag_in_osm_element(): k=%s" % src_text)
 			# Проверяем имя тега OSM на соответствие искомому тегу правил:
 			if check_param_by_rule(src_text, key_rule_text, key_opt):
 				# Если тег совпал с искомым, проверяем, если нужно значние тега:
@@ -294,17 +295,18 @@ def get_rule_tag_param(tag):
 		if param_key=="math":
 			opt["math"]=tag.get(param_key).lower()
 	if DEBUG:
-		print("DEBUG: get_rule_tag_param(): return opt", opt)
+		os.write(2,"\nDEBUG: get_rule_tag_param(): return opt")
+		print("\nDEBUG: get_rule_tag_param(): return opt", opt)
 	return opt
 
 # Проверяем значение на соответствие правилу поиска:
 def check_param_by_rule(src_text, rule_text, opt):
 	if DEBUG:
-		print("find '%s' in '%s'" % (rule_text.encode("utf8"), src_text.encode("utf8")))
+		os.write(2,"\nfind '%s' in '%s'" % (rule_text.encode("utf8"), src_text.encode("utf8")))
 	if opt["regex"]:
 		if re.search(rule_text, src_text) is not None:
 			if DEBUG:
-				print("src_text='%s' соответствует регулярному выражению: '%s'" % (src_text.encode("utf8"),rule_text.encode("utf8")))
+				os.write(2,"\nsrc_text='%s' соответствует регулярному выражению: '%s'" % (src_text.encode("utf8"),rule_text.encode("utf8")))
 			return True
 	elif opt["math"] !="no":
 		if opt["math"]=="lt":
@@ -327,7 +329,7 @@ def check_param_by_rule(src_text, rule_text, opt):
 
 
 def print_help():
-	print("""
+	os.write(2,"""
 This is parsing OSM programm. 
 	This programm change input file by rules file and save result to output file. 
 	Use:            
@@ -337,6 +339,7 @@ options:
 	-r file - file with xml-rules 
 	-i file - input file with osm 
 	-o file - output file with osm, where programm save result 
+	-d - debug output
 	-h - this help
 need 3 parametr: rules-file, input and output files.
 Use -h for help.
@@ -347,9 +350,9 @@ def parse_opts():
 	inputfile = ''
 	outputfile = ''
 	try:
-		opts, args = getopt.getopt(sys.argv[1:],"hr:i:o:",["help","rules=","infile=","outfile="])
+		opts, args = getopt.getopt(sys.argv[1:],"hdr:i:o:",["help","debug","rules=","infile=","outfile="])
 	except getopt.GetoptError as err:
-		print str(err) # will print something like "option -a not recognized"
+		os.write(2, str(err) ) # will print something like "option -a not recognized"
 		print_help()
 		sys.exit(2)
 

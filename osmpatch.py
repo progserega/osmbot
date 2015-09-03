@@ -315,7 +315,7 @@ def check_param_by_rule(src_text, rule_text, opt):
 		elif opt["math"]=="gt":
 			if float(src_text) > float(rule_text):
 				return True
-	if opt["case_sensitive"]:
+	if opt["case_sensitive"]==False:
 		src_text=src_text.lower() 
 		rule_text=rule_text.lower() 
 	if opt["full_match"]:

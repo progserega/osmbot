@@ -14,8 +14,8 @@ def patch(element, rules_root):
 	# Перебираем все patchset-ы:
 	for patchset in rules_root:
 		if patchset.tag=="patchset":
-			if len(patchset):
-				process_patchset(element,patchset)
+#			if len(patchset):
+			process_patchset(element,patchset)
 
 def process_patchset(element, patchset):
 	# Перебираем все правила:
@@ -286,13 +286,13 @@ def get_rule_tag_param(tag):
 		if param_key=="full_match":
 			if tag.get(param_key).lower()=="no":
 				opt["full_match"]=False
-		if param_key=="regex":
-			if tag.get(param_key).lower()=="yes":
-				opt["regex"]=True
-		if param_key=="case_sensitive":
+		elif param_key=="case_sensitive":
 			if tag.get(param_key).lower()=="no":
 				opt["case_sensitive"]=False
-		if param_key=="math":
+		elif param_key=="regex":
+			if tag.get(param_key).lower()=="yes":
+				opt["regex"]=True
+		elif param_key=="math":
 			opt["math"]=tag.get(param_key).lower()
 	if DEBUG:
 		os.write(2,"\nDEBUG: get_rule_tag_param(): return opt")
@@ -308,22 +308,32 @@ def check_param_by_rule(src_text, rule_text, opt):
 			if DEBUG:
 				os.write(2,"\nsrc_text='%s' соответствует регулярному выражению: '%s'" % (src_text.encode("utf8"),rule_text.encode("utf8")))
 			return True
+		else:
+			return False
 	elif opt["math"] !="no":
 		if opt["math"]=="lt":
 			if float(src_text) < float(rule_text):
 				return True
+			else:
+				return False
 		elif opt["math"]=="gt":
 			if float(src_text) > float(rule_text):
 				return True
+			else:
+				return False
 	if opt["case_sensitive"]==False:
 		src_text=src_text.lower() 
 		rule_text=rule_text.lower() 
 	if opt["full_match"]:
 		if src_text==rule_text:
 			return True
+		else:
+			return False
 	else:
 		if rule_text in src_text:
 			return True
+		else:
+			return False
 	# Не соответствует:
 	return False
 

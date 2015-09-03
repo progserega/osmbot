@@ -6,16 +6,16 @@
 	<!-- Ищем элемент с тегами:-->
 	<!-- Find element with tags:-->
 	<find>
-		<!-- Задаём, какие типы элементов обрабатываем -->
-		<!-- Set, wich type of elements we will be processed -->
+		<!-- Задаём, какие типы элементов обрабатываем  (по умолчанию поиск производится во всех элементах - nodes='yes' ways='yes' relation='yes') -->
+		<!-- Set, wich type of elements we will be processed (by default - nodes='yes' ways='yes' relation='yes') -->
 		<type nodes='yes' ways='yes' relation='yes' />
 		<tag>
 			<!-- full_match='no' - значит условие выполнится, если в OSM-теге найдётся искомая строка, если же full_match='yes' - условие выполнится, 
 				 если строки полностью совпадут. (по умолчанию - yes)
 				 case_sensitive='no' - поиск производится без учёта регистра символов в строках (по умолчанию - yes)
 				 regex='yes' - поиск производится по regex-маске, заданной как значение тега (по умолчанию - no). В случае 'yes' - все остальные теги игнорируются
-				 math='gt' - условие выполнится, если значение тега больше заданного числа 
-				 math='lt' - условие выполнится, значение тега меньше заданного числа 
+				 math='gt' - условие выполнится, если значение тега больше заданного числа  (по умолчанию - no)
+				 math='lt' - условие выполнится, значение тега меньше заданного числа (по умолчанию - no)
 				 -->
 			<!-- full_match='no' - true, if tag have this string, if full_match='yes' - true, if strings full match -->
 			<key full_match='yes'>power</key>

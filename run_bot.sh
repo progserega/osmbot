@@ -44,6 +44,7 @@ process_bbox()
 
 	# Скачиваем блок:
 	echo "Dounloading bbox from API:" >> "${log}"
+	echo "start command: curl -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}\"" >> "${log}"
 	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" &> "${error_file}"
 	curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]

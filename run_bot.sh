@@ -44,8 +44,8 @@ process_bbox()
 
 	# Скачиваем блок:
 	echo "Dounloading bbox from API:" >> "${log}"
-	echo "start command: curl -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}\"" >> "${log}"
-	curl -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" &> "${error_file}"
+	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}\"" >> "${log}"
+	curl $curl_opt -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/map?bbox=${1},${2},${3},${4}" &> "${error_file}"
 	curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
@@ -102,8 +102,8 @@ process_bbox()
 
 	# Загружаем изменения:
 	echo "Send ${osm_diff_file} to API-server:" >> "${log}"
-	echo "start command: curl -u \"${login}:${passwd}\" -d @\"${osm_diff_file}\" -X POST \"${api_server}/api/0.6/changeset/${changeset_id}/upload\"" >> "${log}"
-	curl -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" &> "${error_file}"
+	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -d @\"${osm_diff_file}\" -X POST \"${api_server}/api/0.6/changeset/${changeset_id}/upload\"" >> "${log}"
+	curl $curl_opt -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" &> "${error_file}"
 	curl_return_status="$?"
 	if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
@@ -153,8 +153,8 @@ echo "</changeset>
 </osm>" >> "${osm_changeset_template_file}"
 ####################
 cat /dev/null> "${tmp_file}"
-echo "start command: curl -u \"${login}:${passwd}\" -o \"${tmp_file}\" -d @\"${osm_changeset_template_file}\" -X PUT \"${api_server}/api/0.6/changeset/create\"" >> "${log}"
-curl -u "${login}:${passwd}" -o "${tmp_file}" -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &> "${error_file}"
+echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${tmp_file}\" -d @\"${osm_changeset_template_file}\" -X PUT \"${api_server}/api/0.6/changeset/create\"" >> "${log}"
+curl $curl_opt -u "${login}:${passwd}" -o "${tmp_file}" -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &> "${error_file}"
 curl_return_status="$?"
 if [ ! 1 -eq "`cat ${tmp_file}|egrep '^[0-9]+$'|wc -l`" -o ! 0 -eq "`cat ${tmp_file}|egrep -v '^[0-9]+$'|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
 then
@@ -276,8 +276,8 @@ done
 # Закрываем единый для всех квадратов changeset:
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:"
-echo "start command: curl -u \"${login}:${passwd}\" -X PUT -d '' \"${api_server}/api/0.6/changeset/${changeset_id}/close\"" >> "${log}" 
-curl -u "${login}:${passwd}" -X PUT -d '' "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
+echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -X PUT -d '' \"${api_server}/api/0.6/changeset/${changeset_id}/close\"" >> "${log}" 
+curl $curl_opt -u "${login}:${passwd}" -X PUT -d '' "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
 curl_return_status="$?"
 
 if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]

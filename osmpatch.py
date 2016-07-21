@@ -7,8 +7,8 @@ import getopt
 import re
 import os
 
-DEBUG=False
-#DEBUG=True
+#DEBUG=False
+DEBUG=True
 
 def patch(element, rules_root):
 	# Перебираем все patchset-ы:
@@ -140,7 +140,7 @@ def remove_element_recurse(element):
 	# Проверяем, что на этот элемент не больше одной ссылки (точка состоит только в одной линии, линия находится только в одном отношении):
 	num_link=get_num_link_to_this_elem(element) 
 	if num_link == -1:
-		os.write(2,"ERROR parsing OSM with element: %s", element.tag)
+		os.write(2,"ERROR parsing OSM with element: %s"%element.tag)
 		sys.exit(1)
 	if num_link <= 1:
 		parent=element.getparent()
@@ -161,6 +161,9 @@ def get_num_link_to_this_elem(element):
 	 	return -1
 
 	root_osm=element.getparent()
+	if root_osm == None:
+		return -1
+
 	for sub_element in root_osm:
 		if sub_element.tag=="relation":
 			for elem in sub_element:

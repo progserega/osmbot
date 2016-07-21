@@ -15,11 +15,18 @@ def check_links(element):
 	global ways
 	num=0
 
-	if element.tag=="ways":
+	if DEBUG:
+		print("DEBUG: proccess element=%s, element.tag=%s" % (element.get("id"),element.tag))
+
+	if element.tag=="way":
+		if DEBUG:
+			print("DEBUG: proccess way_id=%s" % element.get("id"))
 		for elem in element:
 			if elem.tag=="nd":
 				if "ref" in elem.keys():
 					element_id=elem.get("ref")
+					if DEBUG:
+						print("DEBUG: proccess way_id=%s, nd_ref=%s" % (element.get("id"),element_id))
 					if element_id not in nodes:
 						# broken link!
 						print("BROKEN LINK found, way_id=%s, nd-ref=%s" % (element.get("id"), element_id))

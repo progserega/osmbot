@@ -102,13 +102,17 @@ def patch_delete_element(element,rule):
 		if num_link == -1:
 			os.write(2,"\nERROR parsing OSM with element: %s", element.tag)
 			sys.exit(1)
-		if num_link <= 1:
+		if num_link == 0:
 			# Удаляем элемент без дочерних элементов:
 			parent=element.getparent()
 			parent.remove(element)
 		else:
-			if DEBUG:
-				os.write(2,"\nDEBUG: patch_delete_element(): element have more 1 link - skip delete: %s" % element.tag)
+			# remove all links:
+			num_link=remove_links(element)
+			os.write(2,"\nremove_links(): remove %d links to removed element" % num_link)
+			# remove element:
+			parent=element.getparent()
+			parent.remove(element)
 	return
 
 def remove_element_recurse(element):
@@ -142,13 +146,62 @@ def remove_element_recurse(element):
 	if num_link == -1:
 		os.write(2,"ERROR parsing OSM with element: %s"%element.tag)
 		sys.exit(1)
-	if num_link <= 1:
+	if num_link == 0:
 		parent=element.getparent()
 		parent.remove(element)
 	else:
 		if DEBUG:
-			os.write(2,"\nDEBUG: remove_element_recurse(): element have more 1 link - skip delete: %s" % element.tag)
+			os.write(2,"\nDEBUG: remove_element_recurse(): element have more 1 link - try remove all links before: %s" % element.tag)
+		# remove all links:
+		num_link=remove_links(element)
+		os.write(2,"\nremove_links(): remove %d links to removed element" % num_link)
+		# remove element:
+		parent=element.getparent()
+		parent.remove(element)
 	return
+
+def remove_links(element):
+	global nodes
+	global ways
+	num=0
+
+	if DEBUG:
+		print("DEBUG: proccess element=%s, element.tag=%s" % (element.get("id"),element.tag))
+
+	if element.tag=="way":
+		if DEBUG:
+			print("DEBUG: proccess way_id=%s" % element.get("id"))
+		for elem in element:
+			if elem.tag=="nd":
+				if "ref" in elem.keys():
+					element_id=elem.get("ref")
+					if DEBUG:
+						print("DEBUG: proccess way_id=%s, nd_ref=%s" % (element.get("id"),element_id))
+					if element_id not in nodes:
+						# broken link!
+						print("BROKEN LINK found, way_id=%s, nd-ref=%s" % (element.get("id"), element_id))
+						print("remove it!")
+						element.remove(elem)
+						num+=1
+	elif element.tag=="relation":
+		for elem in element:
+			if elem.tag=="member":
+				if "type" in elem.keys() and "ref" in elem.keys():
+					if elem.get("type") == "way":
+						element_id=elem.get("ref")
+						if element_id not in ways:
+							print("BROKEN LINK found, relation=%s, way-ref=%s" % (element.get("id"), element_id))
+							print("remove it!")
+							element.remove(elem)
+							num+=1
+					if elem.get("type") == "node":
+						element_id=elem.get("ref")
+						if element_id not in nodes:
+							print("BROKEN LINK found, relation=%s, node-ref=%s" % (element.get("id"), element_id))
+							print("remove it!")
+							element.remove(elem)
+							num+=1
+	return num
 
 def get_num_link_to_this_elem(element):
 	num_link=0

@@ -7,8 +7,8 @@ import getopt
 import re
 import os
 
-#DEBUG=False
-DEBUG=True
+DEBUG=False
+#DEBUG=True
 
 def check_links(element):
 	global nodes
@@ -27,7 +27,7 @@ def check_links(element):
 						element.remove(elem)
 						num+=1
 	elif element.tag=="relation":
-		for elem in sub_element:
+		for elem in element:
 			if elem.tag=="member":
 				if "type" in elem.keys() and "ref" in elem.keys():
 					if elem.get("type") == "way":
@@ -124,13 +124,15 @@ for node in osm_root:
 #			print ("DEBUG: node.keys: ", node.keys())
 		relations[node.get("id")]=node
 
+num=0
 # Проверяем последовательно все линки:
 for way_id in ways:
-	num=check_links(ways[way_id])
-	print("Найдено и исправленно %d ссылок в ways"%num)
+	num+=check_links(ways[way_id])
+print("Найдено и исправленно %d ссылок в ways"%num)
+num=0
 for relation_id in relations:
-	num=check_links(relations[relation_id])
-	print("Найдено и исправленно %d ссылок в relations"%num)
+	num+=check_links(relations[relation_id])
+print("Найдено и исправленно %d ссылок в relations"%num)
 
 
 #if DEBUG:

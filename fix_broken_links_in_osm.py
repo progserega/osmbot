@@ -89,7 +89,11 @@ for node in osm_root:
 
 # Проверяем последовательно все линки:
 for way_id in ways:
-	check_links(ways[way_id])
+	num=check_links(ways[way_id])
+	print("Найдено и исправленно %d ссылок в ways"%num)
+for relation_id in relations:
+	num=check_links(relations[relation_id])
+	print("Найдено и исправленно %d ссылок в relations"%num)
 
 
 #if DEBUG:

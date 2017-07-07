@@ -2,9 +2,9 @@
 
 if [ -z "$1" ]
 then
-	echo "Need 3 argument: config file, osm type and osm_uid"
+	echo "Need 1 argument: config file"
 	echo "Example use:"
-	echo "  $0 osmbot.conf node 342324"
+	echo "  $0 osmbot.conf"
 	echo ""
 	exit 1
 fi
@@ -174,102 +174,33 @@ echo "Created changeset id=${changeset_id}"
 
 exit_status=0
 
-# get coordinates from bbox:
-x1="`echo ${bbox_to_process}|awk '{print $1}' FS=','`"
-y1="`echo ${bbox_to_process}|awk '{print $2}' FS=','`"
-x2="`echo ${bbox_to_process}|awk '{print $3}' FS=','`"
-y2="`echo ${bbox_to_process}|awk '{print $4}' FS=','`"
-
-bbox_x1="${x1}"
-bbox_y1="${y1}"
-bbox_x2="${x2}"
-bbox_y2="${y2}"
-
-bbox_y1="${y1}"
-bbox_y2="${y1}"
-
-# просчитываем количество итераций:
-num_x_iterac=`echo "($x2-$x1)/${step}"|bc -l`
-celoe="`echo ${num_x_iterac}|sed 's/\..*//'`"
-if [ -z ${celoe} ]
-then
-	celoe="0"
-fi
-
-if [ $(echo "$num_x_iterac > $celoe" | bc) -eq 1 ]
-then
-	num_x_iterac="`echo $celoe + 1|bc`"
-fi
-
-num_y_iterac=`echo "($y2-$y1)/${step}"|bc -l`
-celoe="`echo ${num_y_iterac}|sed 's/\..*//'`"
-if [ -z ${celoe} ]
-then
-	celoe="0"
-fi
-
-if [ $(echo "$num_y_iterac > $celoe" | bc) -eq 1 ]
-then
-	num_y_iterac="`echo $celoe + 1|bc`"
-fi
-
-num_eterations=`echo "$num_x_iterac * $num_y_iterac"|bc -l`
+num_eterations=`cat $osm_id_csv|wc -l`
 
 success_procent_by_iteration=`echo "100/$num_eterations"|bc -l`
-echo "Будет проведено $num_eterations обработок квадратов по ${step}x${step} градусов."
+echo "Будет проведено $num_eterations обработок объектов."
 procent_success="0"
 
-while /bin/true
+while read text
 do
-	bbox_y2="`echo ${bbox_y1}+${step}|bc -l`"
-	if [ $(echo "$bbox_y2 > $y2" | bc) -eq 1 ]
-	then
-		bbox_y2="${y2}"
-	fi
-	# processing:
+  osm_type="`echo $text|awk '{print $1}' FS='#'`"
+  osm_id="`echo $text|awk '{print $2}' FS='#'`"
+  #############################
+  # processing:
+  process_id "${osm_type}" "${osm_id}"
+  if [ ! 0 -eq $? ]
+  then
+    echo "`date +%Y.%m.%d-%T`: error process_id()!" 
+    echo "`date +%Y.%m.%d-%T`: error process_id()!" >> "${log}"
+    exit_status=1
+    break
+  fi
 
-		bbox_x1="${x1}"
-		bbox_x2="${x1}"
-		while /bin/true
-		do
-			bbox_x2="`echo ${bbox_x1}+${step}|bc -l`"
-			if [ $(echo "$bbox_x2 > $x2" | bc) -eq 1 ]
-			then
-				bbox_x2="${x2}"
-			fi
+  # show procent of success:
+  procent_success=`echo "${procent_success} + ${success_procent_by_iteration}"|bc -l`
+  echo "Success: `echo ${procent_success}|sed 's/^\./0./'|sed 's/\..*//'`%..."
 
-			#############################
-			# processing:
-			process_bbox "${bbox_x1}" "${bbox_y1}" "${bbox_x2}" "${bbox_y2}"
-			if [ ! 0 -eq $? ]
-			then
-				echo "`date +%Y.%m.%d-%T`: error process_bbox()!" 
-				echo "`date +%Y.%m.%d-%T`: error process_bbox()!" >> "${log}"
-				exit_status=1
-				break
-			fi
-
-			# show procent of success:
-			procent_success=`echo "${procent_success} + ${success_procent_by_iteration}"|bc -l`
-			echo "Success: `echo ${procent_success}|sed 's/^\./0./'|sed 's/\..*//'`%..."
-
-			#############################
-			bbox_x1="${bbox_x2}"
-			if [ $(echo "$bbox_x1 >= $x2" | bc) -eq 1 ]
-			then
-				break
-			fi
-		done
-	bbox_y1="${bbox_y2}"
-	if [ $(echo "$bbox_y1 >= $y2" | bc) -eq 1 ]
-	then
-		break
-	fi
-	if [ 1 -eq $exit_status ]
-	then
-		break
-	fi
-done
+  #############################
+done < ${osm_id_csv}
 
 # Закрываем единый для всех квадратов changeset:
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"

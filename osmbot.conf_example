@@ -14,6 +14,8 @@ api_server="http://api06.dev.openstreetmap.org"
 #bbox_to_process="131.94051,43.10845,131.94790,43.11498"
 # primorsky kray:
 bbox_to_process="129.4189453,42.2285174,139.1748047,48.7199612"
+# csv-list for proccess by uid (eatch row: node#34234 or way#234234):
+osm_id_csv="osm_elements_list.csv"
 
 rules_file="/home/Serega/work/osmbot/rules.xml"
 

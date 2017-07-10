@@ -60,8 +60,10 @@ process_id()
 
 
 	# правим и сохраняем в out.osm
-	echo "Start parsing:" >> "${log}"
-	"${osmpatch}" -r "${rules_file}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}" 2>"${error_file}"
+  rules_file_path="${osm_id_rules_dir}/rule_${1}#${2}.xml"
+	echo "Start parsing by command:" >> "${log}"
+	echo "${osmpatch} -r ${rules_file_path} -i ${osm_in_file} -o ${osm_out_file} > ${tmp_file} 2>${error_file}" >> "${log}"
+	"${osmpatch}" -r "${rules_file_path}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}" 2>"${error_file}"
 	if [ ! 0 -eq $? ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"

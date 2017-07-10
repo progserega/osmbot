@@ -16,6 +16,7 @@ api_server="http://api06.dev.openstreetmap.org"
 bbox_to_process="129.4189453,42.2285174,139.1748047,48.7199612"
 # csv-list for proccess by uid (eatch row: node#34234 or way#234234):
 osm_id_csv="osm_elements_list.csv"
+osm_id_rules_dir="/home/serega/work/drsk_git/arm_ste/scripts/out/"
 
 rules_file="/home/Serega/work/osmbot/rules.xml"
 

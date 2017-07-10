@@ -42,8 +42,8 @@ process_id()
 
 	# Скачиваем блок:
 	echo "Downloading osm element from API:" >> "${log}"
-	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/${1}/#$2\"" >> "${log}"
-	curl $curl_opt -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/${1}/#$2" &> "${error_file}"
+	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/${1}/$2\"" >> "${log}"
+	curl $curl_opt -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/${1}/$2" &> "${error_file}"
 	curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then

@@ -33,3 +33,6 @@ curl_opt="--retry 5 --retry-delay 10"
 
 osmosis="/opt/osmosis/bin/osmosis"
 osmpatch="/home/Serega/work/osmbot/osmpatch.py"
+
+# Не загружать данные на сервер OSM:
+DEBUG="yes"

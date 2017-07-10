@@ -42,9 +42,9 @@ process_id()
 
 	# Скачиваем блок:
 	echo "Downloading osm element from API:" >> "${log}"
-	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/${1}/$2\"" >> "${log}"
-	curl $curl_opt -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/${1}/$2" &> "${error_file}"
-	curl_return_status="$?"
+	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${osm_in_file}\" -X GET \"${api_server}/api/0.6/${1}/#$2\"" >> "${log}"
+  curl $curl_opt -u "${login}:${passwd}" -o "${osm_in_file}" -X GET "${api_server}/api/0.6/${1}/#$2" &> "${error_file}"
+  curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute curl GET!"
@@ -101,20 +101,25 @@ process_id()
 	# Загружаем изменения:
 	echo "Send ${osm_diff_file} to API-server:" >> "${log}"
 	echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -d @\"${osm_diff_file}\" -X POST \"${api_server}/api/0.6/changeset/${changeset_id}/upload\"" >> "${log}"
-	curl $curl_opt -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" &> "${error_file}"
-	curl_return_status="$?"
-	if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
-	then
-		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
-		echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
-		echo "server ansver:
-`cat ${osm_diff_file}`" 
-		echo "server ansver:
-`cat ${osm_diff_file}`" >> "${log}"
-		echo "last 50 lines error-log:" >> "${log}"
-		cat "${error_file}"|tail -n 50 >> "${log}"
-		return 1
-	fi
+  if [ $DEBUG != "yes" ]
+  then
+    curl $curl_opt -u "${login}:${passwd}" -d @"${osm_diff_file}" -X POST "${api_server}/api/0.6/changeset/${changeset_id}/upload" &> "${error_file}"
+    curl_return_status="$?"
+    if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
+    then
+      echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
+      echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
+      echo "server ansver:
+  `cat ${osm_diff_file}`" 
+      echo "server ansver:
+  `cat ${osm_diff_file}`" >> "${log}"
+      echo "last 50 lines error-log:" >> "${log}"
+      cat "${error_file}"|tail -n 50 >> "${log}"
+      return 1
+    fi
+  else
+    curl_return_status=0
+  fi
 
 	echo "End processing: ${1}#${2}" >> "${log}"
 	echo "============================================" >> "${log}"
@@ -152,23 +157,27 @@ echo "</changeset>
 ####################
 cat /dev/null> "${tmp_file}"
 echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -o \"${tmp_file}\" -d @\"${osm_changeset_template_file}\" -X PUT \"${api_server}/api/0.6/changeset/create\"" >> "${log}"
-curl $curl_opt -u "${login}:${passwd}" -o "${tmp_file}" -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &> "${error_file}"
-curl_return_status="$?"
-if [ ! 1 -eq "`cat ${tmp_file}|egrep '^[0-9]+$'|wc -l`" -o ! 0 -eq "`cat ${tmp_file}|egrep -v '^[0-9]+$'|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+if [ $DEBUG != "yes" ]
 then
-		echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" 
-		echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" >> "${log}"
-		echo "server ansver:
-		`cat ${tmp_file}`" 
-		echo "server ansver:
-		`cat ${tmp_file}`" >> "${log}"
-		echo "last 50 lines error-log:" >> "${log}"
-		cat "${error_file}"|tail -n 50 >> "${log}"
-		exit 1
+  curl $curl_opt -u "${login}:${passwd}" -o "${tmp_file}" -d @"${osm_changeset_template_file}" -X PUT "${api_server}/api/0.6/changeset/create" &> "${error_file}"
+  curl_return_status="$?"
+  if [ ! 1 -eq "`cat ${tmp_file}|egrep '^[0-9]+$'|wc -l`" -o ! 0 -eq "`cat ${tmp_file}|egrep -v '^[0-9]+$'|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+  then
+      echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" 
+      echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" >> "${log}"
+      echo "server ansver:
+      `cat ${tmp_file}`" 
+      echo "server ansver:
+      `cat ${tmp_file}`" >> "${log}"
+      echo "last 50 lines error-log:" >> "${log}"
+      cat "${error_file}"|tail -n 50 >> "${log}"
+      exit 1
+  fi
+  changeset_id="`cat ${tmp_file}`"
+else
+  curl_return_status="0"
+  changeset_id="1"
 fi
-
-
-changeset_id="`cat ${tmp_file}`"
 echo "Changeset id=${changeset_id}" >> "${log}"
 echo "Created changeset id=${changeset_id}"
 
@@ -206,41 +215,49 @@ done < ${osm_id_csv}
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:" >> "${log}"
 echo "`date +%Y.%m.%d-%T`: Close changeset id=${changeset_id}:"
 echo "start command: curl $curl_opt -u \"${login}:${passwd}\" -X PUT -d '' \"${api_server}/api/0.6/changeset/${changeset_id}/close\"" >> "${log}" 
-curl $curl_opt -u "${login}:${passwd}" -X PUT -d '' "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
-curl_return_status="$?"
-
-if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+if [ $DEBUG != "yes" ]
 then
-		echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" 
-		echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" >> "${log}"
-		echo "server ansver:
-		`cat ${error_file}`" 
-		echo "server ansver:
-		`cat ${error_file}`" >> "${log}"
-		echo "last 50 lines stdout:" >> "${log}"
-		cat "${tmp_file}"|tail -n 50 >> "${log}"
-		exit 1
+  curl $curl_opt -u "${login}:${passwd}" -X PUT -d '' "${api_server}/api/0.6/changeset/${changeset_id}/close" 2>"${tmp_file}" 1>"${error_file}"
+  curl_return_status="$?"
+
+  if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
+  then
+      echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" 
+      echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" >> "${log}"
+      echo "server ansver:
+      `cat ${error_file}`" 
+      echo "server ansver:
+      `cat ${error_file}`" >> "${log}"
+      echo "last 50 lines stdout:" >> "${log}"
+      cat "${tmp_file}"|tail -n 50 >> "${log}"
+      exit 1
+  fi
+else
+  curl_return_status="0"
 fi
 
 if [ 0 -eq "${exit_status}" ]
 then
 		echo "Success processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
 		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}" >> "${log}"
-		echo "`date +%Y.%m.%d-%T`: ================ Success processing ids list: ${osm_id_csv} ==============" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ================ Success processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
 		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}"
-		echo "================ Success processing ids list: ${osm_id_csv} =============="
+		echo "================ Success processing bbox: ${bbox_to_process} by rules.xml =============="
 else
 		echo "ERROR processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
-		echo "`date +%Y.%m.%d-%T`: ================ ERROR processing ids list: ${osm_id_csv} ==============" >> "${log}"
-		echo "================ ERROR processing ids list: ${osm_id_csv} =============="
+		echo "`date +%Y.%m.%d-%T`: ================ ERROR processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+		echo "================ ERROR processing bbox: ${bbox_to_process} by rules.xml =============="
 fi
 
-rm "${tmp_file}"
-rm "${osm_in_file}"
-rm "${osm_out_file}"
-rm "${osm_diff_file}"
-rm "${osm_changeset_template_file}"
-rm "${error_file}"
+if [ $DEBUG != "yes" ]
+then
+  rm "${tmp_file}"
+  rm "${osm_in_file}"
+  rm "${osm_out_file}"
+  rm "${osm_diff_file}"
+  rm "${osm_changeset_template_file}"
+  rm "${error_file}"
+fi
 
 exit ${exit_status}
 

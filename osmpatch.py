@@ -275,6 +275,15 @@ def process_find(element, rule):
   tags=0
   success=0
   for find_rule in rule:
+    if find_rule.tag=="osm_id":
+      print("id:",find_rule.attrib["id"])
+      if element.attrib["id"] == find_rule.attrib["id"]:
+        # идентификаторы совпадают, считаем, что нашли:
+        return True
+      else:
+        # id объекта не совпадает с искомым
+        return False
+      
     if find_rule.tag=="tag":
       if not find_rule_tag_in_osm_element(element, find_rule):
         # Данная тег-значение не найдена в элементе OSM, поэтому

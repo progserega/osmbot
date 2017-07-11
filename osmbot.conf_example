@@ -1,8 +1,4 @@
 ####  Config file for osmbot ####
-# osm comment to changeset:
-job_name="operator_fix"
-job_comment="test change"
-
 # Login to api-server:
 login="username"
 

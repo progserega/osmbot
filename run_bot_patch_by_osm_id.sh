@@ -242,13 +242,12 @@ if [ 0 -eq "${exit_status}" ]
 then
 		echo "Success processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
 		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}" >> "${log}"
-		echo "`date +%Y.%m.%d-%T`: ================ Success processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ================ Success processing osm_ids by ${osm_id_csv} ==============" >> "${log}"
 		echo "`date +%Y.%m.%d-%T`: Changeset url: ${api_server}/browse/changeset/${changeset_id}"
-		echo "================ Success processing bbox: ${bbox_to_process} by rules.xml =============="
+		echo "================ Success processing osm_ids by ${osm_id_csv} =============="
 else
-		echo "ERROR processing bbox: ${bbox_to_process} by rules.xml" >> "${log}"
-		echo "`date +%Y.%m.%d-%T`: ================ ERROR processing bbox: ${bbox_to_process} by rules.xml ==============" >> "${log}"
-		echo "================ ERROR processing bbox: ${bbox_to_process} by rules.xml =============="
+		echo "ERROR processing osm_ids by ${osm_id_csv}" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ================ ERROR processing osm_ids by ${osm_id_csv} ==============" >> "${log}"
 fi
 
 if [ $DEBUG != "yes" ]

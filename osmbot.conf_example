@@ -29,7 +29,7 @@ step="0.5"
 # Log file:
 log="/tmp/osmbot.log"
 
-curl_opt="--retry 5 --retry-delay 10"
+curl_opt="--retry 10 --retry-delay 60"
 
 osmosis="/opt/osmosis/bin/osmosis"
 osmpatch="/home/Serega/work/osmbot/osmpatch.py"

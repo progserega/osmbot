@@ -68,8 +68,12 @@ process_id()
 	then
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"
 		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!" >> "${log}"
-		echo "last 50 lines error-log:" >> "${log}"
+		echo "================= last 50 lines error-log:" >> "${log}"
 		cat "${error_file}"|tail -n 50 >> "${log}"
+		echo "=================  Contain of '${rules_file_path}':" >> "${log}"
+		cat "${rules_file_path}" >> "${log}"
+		echo "================= Contain of '${osm_in_file}':" >> "${log}"
+		cat "${rules_file_path}" >> "${log}"
 		return 1
 	fi
 	# Выводим список изменённых элементов:

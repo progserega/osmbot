@@ -32,7 +32,7 @@ osm_in_file="`mktemp /tmp/osmbot_in.osm_XXXX`"
 osm_out_file="`mktemp /tmp/osmbot_out.osm_XXXXX`"
 osm_diff_file="`mktemp /tmp/osmbot_diff.osm_XXXX`"
 osm_changeset_template_file="`mktemp /tmp/osmbot_changeset_template_file_XXXXXX`"
-error_file="`mktemp /tmp/osmbot_error_file_XXXXXX`"
+error_file="`mktemp /tmp/osmbot_err_file_XXXXXX`"
 
 process_id()
 {

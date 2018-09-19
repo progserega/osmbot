@@ -47,8 +47,8 @@ process_id()
   curl_return_status="$?"
 	if [ -z "`cat ${osm_in_file}|grep '<osm'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
 	then
-		echo "`date +%Y.%m.%d-%T`: error execute curl GET!"
-		echo "`date +%Y.%m.%d-%T`: error execute curl GET!" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ERROR execute curl GET!"
+		echo "`date +%Y.%m.%d-%T`: ERROR execute curl GET!" >> "${log}"
 		echo "server ansver:
 `cat ${osm_in_file}`" 
 		echo "server ansver:
@@ -66,8 +66,8 @@ process_id()
 	"${osmpatch}" -r "${rules_file_path}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}" 2>"${error_file}"
 	if [ ! 0 -eq $? ]
 	then
-		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!"
-		echo "`date +%Y.%m.%d-%T`: error execute osmpatch!" >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ERROR execute osmpatch!"
+		echo "`date +%Y.%m.%d-%T`: ERROR execute osmpatch!" >> "${log}"
 		echo "================= last 50 lines error-log:" >> "${log}"
 		cat "${error_file}"|tail -n 50 >> "${log}"
 		echo "=================  Contain of '${rules_file_path}':" >> "${log}"
@@ -89,8 +89,8 @@ process_id()
 	"${osmosis}" --read-xml "${osm_out_file}" --read-xml "${osm_in_file}" --derive-change --write-xml-change "${osm_diff_file}" &> "${error_file}"
 	if [ ! 0 -eq $? ]
 	then
-		echo "`date +%Y.%m.%d-%T`: error execute osmosis!" 
-		echo "`date +%Y.%m.%d-%T`: error execute osmosis!"  >> "${log}"
+		echo "`date +%Y.%m.%d-%T`: ERROR execute osmosis!" 
+		echo "`date +%Y.%m.%d-%T`: ERROR execute osmosis!"  >> "${log}"
 		echo "last 50 lines error-log:" >> "${log}"
 		cat "${error_file}"|tail -n 50 >> "${log}"
 		return 1
@@ -113,8 +113,8 @@ process_id()
     curl_return_status="$?"
     if [ -z "`cat ${osm_diff_file}|grep '<diffResult\|<osmChange'|grep 'version='|grep 'generator='`" -o ! 0 -eq "${curl_return_status}" ]
     then
-      echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" 
-      echo "`date +%Y.%m.%d-%T`: error execute curl upload diff!" >> "${log}"
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl upload diff!" 
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl upload diff!" >> "${log}"
       echo "server ansver:
   `cat ${osm_diff_file}`" 
       echo "server ansver:
@@ -169,8 +169,8 @@ then
   curl_return_status="$?"
   if [ ! 1 -eq "`cat ${tmp_file}|egrep '^[0-9]+$'|wc -l`" -o ! 0 -eq "`cat ${tmp_file}|egrep -v '^[0-9]+$'|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
   then
-      echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" 
-      echo "`date +%Y.%m.%d-%T`: error execute curl create changeset!" >> "${log}"
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl create changeset!" 
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl create changeset!" >> "${log}"
       echo "server ansver:
       `cat ${tmp_file}`" 
       echo "server ansver:
@@ -204,8 +204,8 @@ do
   process_id "${osm_type}" "${osm_id}"
   if [ ! 0 -eq $? ]
   then
-    echo "`date +%Y.%m.%d-%T`: error process_id()!" 
-    echo "`date +%Y.%m.%d-%T`: error process_id()!" >> "${log}"
+    echo "`date +%Y.%m.%d-%T`: ERROR process_id()!" 
+    echo "`date +%Y.%m.%d-%T`: ERROR process_id()!" >> "${log}"
     exit_status=1
     break
   fi
@@ -228,8 +228,8 @@ then
 
   if [ ! 0 -eq "`cat ${error_file}|wc -l`" -o ! 0 -eq "${curl_return_status}" ]
   then
-      echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" 
-      echo "`date +%Y.%m.%d-%T`: error execute curl close changeset!" >> "${log}"
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl close changeset!" 
+      echo "`date +%Y.%m.%d-%T`: ERROR execute curl close changeset!" >> "${log}"
       echo "server ansver:
       `cat ${error_file}`" 
       echo "server ansver:

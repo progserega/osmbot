@@ -278,17 +278,31 @@ def process_find(element, rule):
     if find_rule.tag=="osm_id":
       print("id:",find_rule.attrib["id"])
       if element.attrib["id"] == find_rule.attrib["id"]:
-        # идентификаторы совпадают, считаем, что нашли:
-        return True
+        # идентификаторы совпадают, считаем, что нашли, проверяем следующие правила:
+        continue
       else:
         # id объекта не совпадает с искомым
         return False
       
     if find_rule.tag=="tag":
-      if not find_rule_tag_in_osm_element(element, find_rule):
+      # берём атрибут 'skip' (пропуск элемента)
+      skip=False
+      if "skip" in find_rule.keys():
+        if find_rule.get("skip").lower()=="yes":
+          skip=True
+
+      find_flag=find_rule_tag_in_osm_element(element, find_rule)
+      if find_flag == True and skip == True:
+        # если теги найдены, но установлен параметр пропуска таких значений, то пропускаем элемент:
+        return False
+      elif find_flag == False and skip == False:
         # Данная тег-значение не найдена в элементе OSM, поэтому
         # считаем, что данный элемент OSM не удовлетворяет данному правилу поиска:
         return False
+      else:
+        # в иных случаях - условие верно и элемент нам подходит, но нужно проверить последующие условия - 
+        # продолжаем цикл
+        pass
   # Считаем, что данный элемент OSM соответствует всем искомым правилам:
   return True
 

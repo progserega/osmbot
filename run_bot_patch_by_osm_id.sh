@@ -36,9 +36,9 @@ error_file="`mktemp /tmp/osmbot_err_file_XXXXXX`"
 
 process_id()
 {
-	# parameters - osm_type $1, osm_id $2
+	# parameters - osm_type $1, osm_id $2, postfix $3 (if no exist - empty)
 	echo "============================================" >> "${log}"
-	echo "Start processing: ${1}#${2}" >> "${log}"
+	echo "Start processing: ${1}#${2}#${3}" >> "${log}"
 
 	# Скачиваем блок:
 	echo "Downloading osm element from API:" >> "${log}"
@@ -60,7 +60,13 @@ process_id()
 
 
 	# правим и сохраняем в out.osm
-  rules_file_path="${osm_id_rules_dir}/rule_${1}#${2}.xml"
+  if [ -z "${3}" ]
+  then
+    rules_file_path="${osm_id_rules_dir}/rule_${1}#${2}.xml"
+  else
+    rules_file_path="${osm_id_rules_dir}/rule_${1}#${2}#${3}.xml"
+  fi
+
 	echo "Start parsing by command:" >> "${log}"
 	echo "${osmpatch} -r ${rules_file_path} -i ${osm_in_file} -o ${osm_out_file} > ${tmp_file} 2>${error_file}" >> "${log}"
 	"${osmpatch}" -r "${rules_file_path}" -i "${osm_in_file}" -o "${osm_out_file}" > "${tmp_file}" 2>"${error_file}"
@@ -127,7 +133,7 @@ process_id()
     curl_return_status=0
   fi
 
-	echo "End processing: ${1}#${2}" >> "${log}"
+	echo "End processing: ${1}#${2}#${3}" >> "${log}"
 	echo "============================================" >> "${log}"
 }
 
@@ -199,9 +205,10 @@ while read text
 do
   osm_type="`echo $text|awk '{print $1}' FS='#'`"
   osm_id="`echo $text|awk '{print $2}' FS='#'`"
+  postfix="`echo $text|awk '{print $3}' FS='#'`"
   #############################
   # processing:
-  process_id "${osm_type}" "${osm_id}"
+  process_id "${osm_type}" "${osm_id}" "${postfix}"
   if [ ! 0 -eq $? ]
   then
     echo "`date +%Y.%m.%d-%T`: ERROR process_id()!" 

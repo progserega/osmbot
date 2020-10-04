@@ -9,7 +9,7 @@
 		<!-- Задаём, какие типы элементов обрабатываем  (по умолчанию поиск производится во всех элементах - nodes='yes' ways='yes' relation='yes') -->
 		<!-- Set, wich type of elements we will be processed (by default - nodes='yes' ways='yes' relation='yes') -->
 		<type nodes='yes' ways='yes' relation='yes' />
-    <!-- Если указан тег osm_id - значит искать соотвтетствующий тип объекта (см. выше тег type) без учёта тегов
+    <!-- Если указан тег osm_id - значит искать соотвтетствующий тип объекта (см. выше тег type)
     if exist osm_id - find osm object whit this id and type (node, ways,relation) from tag "type" (see above)/. -->
     <osm_id id='32323' />
 		<tag>
